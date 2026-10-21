@@ -55,3 +55,16 @@ test('stage gates wire proof freshness instead of trusting old stamps', () => {
     assert.ok(playbook.includes(`\`${state}\``), `playbook defines the ${state} proof state`)
   }
 })
+
+test('the route decision and engine surface docs exist and agree with the loop', () => {
+  const route = read('docs/ROUTE-DECISION.md')
+  for (const col of ['open engine to WASM', 'own VM', 'offline IR conversion']) {
+    assert.ok(route.includes(col), `route comparison covers ${col}`)
+  }
+  assert.ok(route.includes('Decision procedure'), 'the choice is a measurement order, not taste')
+  assert.ok(read('docs/PORTING-GUIDE.md').includes('docs/ROUTE-DECISION.md'), 'the porting guide points at the third route')
+  const caps = read('docs/ENGINE-CAPABILITIES.md')
+  for (const fn of ['detect', 'extract', 'decode', 'controlFlow', 'execute', 'assets', 'save', 'verify']) {
+    assert.match(caps, new RegExp(`\`${fn}[(\`]`, 'm'), `the surface names ${fn}`)
+  }
+})

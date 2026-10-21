@@ -34,9 +34,9 @@ Method: read the code named in each finding, reproduced the behavior where cheap
 
 | Finding | Severity | Evidence | Impact | Recommendation | Verification | Status |
 |---|---|---|---|---|---|---|
-| Only routes A (WASM) and B (own VM) are specified; no offline-conversion route C | P2 | `docs/PORTING-GUIDE.md` "The two routes". | Agents shoehorn engines into A/B. | `docs/ROUTE-DECISION.md`: route C (offline IR conversion) comparison table + evidence-driven decision procedure; keep A/B intact. | Doc review. | Confirmed (gap, not a bug) |
-| No shared engine-capability interface | P2 | Each game hand-rolls detection/extraction/decode/save/prove. | Repeated incompatible harnesses. | `docs/ENGINE-CAPABILITIES.md`: minimal 8-function surface (detect/extract/decode/control-flow/execute/assets/save-load/verify) + one synthetic reference implementation under test. | Reference test, not an engine. | Confirmed (gap) |
-| Recovery loop exists but unstated for cold agents | P2 | `lib/recovery.mjs` + `rescue`/`reviewed` + HARNESS-LOOP.md are complete and tested. | Fine, just undiscoverable from a cold start. | Point at it from `AGENT-START.md`; no code change. | — | Refuted as code gap; docs only |
+| Only routes A (WASM) and B (own VM) are specified; no offline-conversion route C | P2 | `docs/PORTING-GUIDE.md` "The two routes". | Agents shoehorn engines into A/B. | `docs/ROUTE-DECISION.md`: route C (offline IR conversion) comparison table + evidence-driven decision procedure; keep A/B intact. | Doc review. | Fixed (A/B table untouched; C compared + decision procedure; guide + README point at it; `docs-links.test.mjs` asserts the table) |
+| No shared engine-capability interface | P2 | Each game hand-rolls detection/extraction/decode/save/prove. | Repeated incompatible harnesses. | `docs/ENGINE-CAPABILITIES.md`: minimal 8-function surface (detect/extract/decode/control-flow/execute/assets/save-load/verify) + one synthetic reference implementation under test. | Reference test, not an engine. | Fixed (surface doc + `engine-capabilities.test.mjs` synthetic detect→verify incl. mid-route save/load and per-route digests) |
+| Recovery loop exists but unstated for cold agents | P2 | `lib/recovery.mjs` + `rescue`/`reviewed` + HARNESS-LOOP.md are complete and tested. | Fine, just undiscoverable from a cold start. | Point at it from `AGENT-START.md`; no code change. | — | Fixed as docs-only (AGENT-START step 10 + CHECKLIST stuck section point at recovery/rescue/reviewed; asserted in `docs-links.test.mjs`) |
 
 ## Contradictions / hygiene (Phase 6)
 

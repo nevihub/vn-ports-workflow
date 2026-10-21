@@ -44,7 +44,7 @@ flowchart TD
     B --> G
 ```
 
-Details: `docs/PORTING-GUIDE.md`. Licence check first — a GPL runtime compiled to WASM means publishing its source.
+Details: `docs/PORTING-GUIDE.md`. Licence check first — a GPL runtime compiled to WASM means publishing its source. A third option (offline IR conversion) is compared in `docs/ROUTE-DECISION.md`.
 
 ## What's inside
 

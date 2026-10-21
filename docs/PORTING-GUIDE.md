@@ -15,6 +15,9 @@ This file helps you pick a route. Engine facts: `docs/ENGINE-NOTES.md`.
 
 Rule of thumb: check for an open runtime before writing a VM (`RE-PORT-PLAYBOOK.md` §5). If none exists, write a small machine-readable opcode spec first (operands, stack effect, side effects, evidence addresses, confidence) and implement from it — missing semantics become RE tickets, not guessed code.
 
+A third option — offline IR conversion (convert scripts once, ship a small player) — is compared
+against these two in `docs/ROUTE-DECISION.md`, with the measurement order that picks between all three.
+
 ## Stage by stage (short)
 
 - **S0 Research.** Fingerprint the install (hashes, archive magics, sizes) into an ignored JSON. Name each format (PROVEN / STRONG / LEAD + the test that would upgrade it). Note prior art and licences in `docs/DECISIONS.md`. Exit: zero unknown magics, or an explicit list.
