@@ -1,0 +1,6 @@
+{
+  "repositories": [
+    { "id": "demo-game", "root": "project:demo", "integrationBranch": "main", "ledgerProject": "demo", "candidates": [], "prune": [] },
+    { "id": "demo-engine", "root": "project:demo-engine", "integrationBranch": "main", "ledgerProject": "demo", "candidates": [], "prune": [] }
+  ]
+}

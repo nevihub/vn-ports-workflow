@@ -1,0 +1,29 @@
+{
+  "agents": {},
+  "projects": [
+    {
+      "id": "demo",
+      "name": "Demo Game",
+      "full": "Demo Game (engine unknown yet)",
+      "aliases": ["demo"],
+      "paths": ["../Demo Game"],
+      "lanes": {
+        "R": ["research", "what the game is made of"],
+        "E": ["engine", "the game's inner machinery"],
+        "W": ["website", "the page you play in"],
+        "U": ["for you", "nobody else touches these"]
+      },
+      "live": null,
+      "fallback": null,
+      "prompt": {
+        "start": "Read AGENTS.md (shared rules + the work loop), then {root}/AGENTS.md and the HANDOFF.md top block. Then run `npm run issue -- show <ID>` for your ticket - do not read the whole docs/BACKLOG.md.",
+        "claimBy": "<agent>",
+        "lanes": {},
+        "rules": "Game rules: npm run firewall before every commit; never print story text; never modify the install. Commit locally only - never push or deploy. When done: npm run issue -- done {id}, npm run issue -- audit, update HANDOFF.md."
+      },
+      "models": {
+        "*": ["glm", "sol", "muse"]
+      }
+    }
+  ]
+}

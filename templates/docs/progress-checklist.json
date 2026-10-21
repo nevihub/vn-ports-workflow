@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "description": "Weighted checklist of the remaining Saya no Uta web port work. Read by scripts/progress-report.mjs. Weights sum to 100. Status is done, partial (partial = credit 0..1, default 0.5) or todo. Items with auto.proof take their status from the matching re/verification proof instead; their status field is ignored.",
+  "rules": {
+    "auto": "proof is a glob relative to the repo root (* within a name, ** for any folders), searched under re/verification/ including subfolders, excluding *.progress.json. Candidates with a boolean field (ok) are sorted newest mtime first. The first candidate wins. No candidate means todo.",
+    "autoFailure": "ok:false gives partial 0.5 when failedPhase is present and does not start with 'boot' (the first phase); otherwise todo. ok:true gives done.",
+    "tier": "Each item should carry a tier field, one of the ids in tiers (kit docs/01-LESSONS.md section 7). The report script does not read it yet; when tagging a new port's checklist, also add a per-tier subtotal to progress-report.mjs under the Playable line."
+  },
+  "tiers": [
+    { "id": "content", "label": "Same scripts, art, voice, music" },
+    { "id": "control", "label": "Same choices reach the same routes" },
+    { "id": "state", "label": "Same flags, variables, layer state" },
+    { "id": "presentation", "label": "Composition, transitions, text" },
+    { "id": "timing", "label": "Blocking, auto/skip, voice and animation order" },
+    { "id": "quirk", "label": "Engine oddities the scripts depend on" }
+  ],
+  "areas": [
+    { "id": "engine", "label": "Engine core & scripts", "weight": 55 },
+    { "id": "route", "label": "Route coverage", "weight": 12 },
+    { "id": "playability", "label": "Playability fixes", "weight": 8 },
+    { "id": "fidelity", "label": "Native fidelity", "weight": 10 },
+    { "id": "harness", "label": "Browser harness suite", "weight": 10 },
+    { "id": "mobile", "label": "Mobile / iPhone", "weight": 5, "mobile": true, "paused": false }
+  ],
+  "items": [
+    { "id": "engine.parse", "area": "engine", "title": "All 82 original scripts parse", "weight": 8, "status": "done", "evidence": "docs/ENGINE_VERIFICATION.md: 82/82 scripts parse (npm run check-scripts)." },
+    { "id": "engine.vm", "area": "engine", "title": "NSS compiler and VM: frames, threads, CreateProcess, select", "weight": 10, "status": "done", "evidence": "HANDOFF.md implementation history items 4, 7 and 9; vitest coverage." },
+    { "id": "engine.objects", "area": "engine", "title": "Object tree, tweens and easing", "weight": 5, "status": "partial", "partial": 0.8, "evidence": "Easing and shake are shortcuts (HANDOFF known shortcuts); object-bank ownership untraced (src/engine/objects.ts)." },
+    { "id": "engine.text", "area": "engine", "title": "<PRE> text: markup, typing, click waits, voices, backlog", "weight": 9, "status": "partial", "partial": 0.9, "evidence": "Native evidence resolves fresh text_speed=500, interval/elapsed truncation, inline thread wake/no remainder, and nominal eight-tick icon cadence with kind reset/Hide Text freeze (rea-progress-findings.md; tests/text.test.ts). FONT/static choice layout is implemented; I tags are empty resets and U/S/WAIT/INTERVAL/SPAN absent from PRE. Browser/GDI metrics, backlog fidelity, per-slot pause/override timing and icon render-cadence drift remain open." },
+    { "id": "engine.audio", "area": "engine", "title": "Web Audio: BGM/SE/VOICE buses, fades, loops", "weight": 5, "status": "done", "evidence": "Native 0x436ed0/0x437402 supplies sound flags and ini-derived reset/current defaults; setters clamp/truncate and 0x473e70 computes internal bus gain volume/1000. Port now reads matching system.ini values 700/700/1000, preserves saved choices and refreshes reset defaults on boot/common reload (system-defaults browser proof and unit tests). Existing live loop/end checks cover Repeat. Loader-to-filename identity is inferred from exact section/key names; downstream DirectSound loudness and AAC seam parity remain outside this functional Web Audio item." },
+    { "id": "engine.saves", "area": "engine", "title": "Save, load, reset and persistence, including the HTTP save fingerprint", "weight": 6, "status": "done", "evidence": "menus-fixed.json and menus-2026-10-14.json pass; save-load-proof.json." },
+    { "id": "engine.menus", "area": "engine", "title": "Title, config, backlog and intrusion menus", "weight": 5, "status": "partial", "partial": 0.9, "evidence": "Original White End/title extras route, all five CG pages, viewer/return and sound Repeat artwork/live loop/end boundaries pass (libraries-user-fixed.json; library-controls-final.json; title-load.json). Native retained capture timing and nested object-bank registration remain untraced; sampled coverage does not prove every CG variant or track." },
+    { "id": "engine.render", "area": "engine", "title": "WebGL2 renderer, 800x600 surfaces, mask transitions", "weight": 4, "status": "partial", "partial": 0.9, "evidence": "haiku2-surfaces.json passes; SetShade cost and restoration limits still open (HANDOFF)." },
+    { "id": "engine.boot", "area": "engine", "title": "Boot path, including HTTP boot without WebCrypto", "weight": 3, "status": "done", "evidence": "http-boot-2026-10-14.json: normal and WebCrypto-disabled boots, 82 AST matches." },
+
+    { "id": "route.skip", "area": "route", "title": "Three endings reach completion in skip mode", "weight": 3, "status": "done", "evidence": "docs/ENGINE_VERIFICATION.md: skip-mode autoplay reached all three endings, 0 unknown built-ins." },
+    { "id": "route.white", "area": "route", "title": "White End played through at normal speed", "weight": 3, "status": "done", "evidence": "re/verification/route-white.json: normal speed, 20 scenes, 238 blocks, 0 failures; ends at the end-roll/staff WaitKey() (expected)." },
+    { "id": "route.ryoko", "area": "route", "title": "Ryoko route played through at normal speed", "weight": 3, "status": "done", "evidence": "re/verification/route-ryoko.json: normal speed, 46 scenes, 462 blocks, 0 failures; ends at the end-roll WaitKey()." },
+    { "id": "route.koji", "area": "route", "title": "Koji route played through at normal speed", "weight": 3, "status": "done", "evidence": "re/verification/route-koji.json: normal speed, 50 scenes, 485 blocks, 0 failures; ends at the end-roll WaitKey()." },
+
+    { "id": "play.wipe", "area": "playability", "title": "Blank text after a mid-page WIPE fixed", "weight": 1.6, "status": "done", "evidence": "Commit ab59569." },
+    { "id": "play.fullscreen", "area": "playability", "title": "F key drives browser fullscreen", "weight": 0.8, "status": "done", "evidence": "Commit 502de7a." },
+    { "id": "play.ampersand", "area": "playability", "title": "& glyph: glue only before . or ,", "weight": 0.8, "status": "done", "evidence": "Commit a1cba6f." },
+    { "id": "play.missingvoice", "area": "playability", "title": "No freeze on the 4 voices missing from voice.npa", "weight": 1.6, "status": "done", "evidence": "Commit 050453c." },
+    { "id": "play.icons", "area": "playability", "title": "Click-wait icon sets prewarmed", "weight": 0.8, "status": "done", "evidence": "Commit cb3ed3f." },
+    { "id": "play.menulatency", "area": "playability", "title": "Menu open latency (root and Config)", "weight": 0.8, "status": "done", "evidence": "menu-latency-fixed.json: root 599 ms, Config 564 ms (baseline 1085 and 3633 ms)." },
+    { "id": "play.bgm", "area": "playability", "title": "BGM starts about 2 s late while decoding", "weight": 1.6, "status": "done", "evidence": "Commit f5f67e0: first sound 233 ms (was ~2.4 s), measured in Chromium." },
+
+    { "id": "fid.layout", "area": "fidelity", "title": "Layout, line breaks, box and sprites match saya.exe", "weight": 3, "status": "done", "evidence": "28 compared pages (sample only), docs/RENDER_SPEC.md." },
+    { "id": "fid.outline", "area": "fidelity", "title": "Text outline weight", "weight": 2, "status": "partial", "partial": 0.7, "evidence": "Commit 2404b72: fillGlyph stamps the eight +-2 px offsets (AROUND) with the fill last; re-captured port pages vs native shots (auto-align, 30 pairs) median width ratio 0.984, pitch delta 0. Residual: native white ink stays ~2x denser at the 225 threshold (GDI hinting/AA)." },
+    { "id": "fid.iconspacing", "area": "fidelity", "title": "Click-icon spacing", "weight": 1, "status": "partial", "partial": 0.8, "evidence": "Outlined icons moved +4 px: native-024 and fresh port-023 both x=143; 29 matched browser states moved exactly +4 x / 0 y. Thirty native/fresh-port comparisons give median ink-relative gap delta +1 (previous -3). Native 0x43feb0 confirms +4 drawable padding for outline flags; 0x4401c0 identifies raw GDI metrics. Baseline drawable width remains approximated by canvas advance, with a shortcut comment. Proofs: re/verification/icon-draw-comparison.json, icon-gap-after.json, icon-compare-after.json; cached REA in re/scratch/." },
+    { "id": "fid.innerwait", "area": "fidelity", "title": "Inline-code waits inside text (for example the 0.5 s sprite crossfade)", "weight": 1, "status": "done", "evidence": "Native 0x483680 starts a separate inline thread; 0x47f130 polls thread exit and resets the glyph timestamp at 0x47f1e4. Each batch also resets its timestamp at 0x47fda4: no fractional carry. This matches retained VM continuations; original WaitKey(500) timeout/input/save restoration and cafe proofs pass (inline-wait-compressed.json; native-fidelity rerun; rea-progress-findings.md)." },
+    { "id": "fid.shortcuts", "area": "fidelity", "title": "Remaining `shortcut:` guesses in src (live count printed by the report)", "weight": 3, "status": "partial", "partial": 0.5, "evidence": "Native findings resolve sound defaults and inline glyph-clock assumptions. Icon timing is traced but retains a shortcut for browser render-cadence/overload drift. Remaining markers are counted at report time; this broad item's credit is unchanged merely by lowering that count." },
+
+    { "id": "harness.autoplay", "area": "harness", "title": "Browser check: autoplay (skip-mode routes)", "weight": 0.67, "status": "todo", "auto": { "proof": "re/verification/**/*autoplay*.json", "field": "ok" } },
+    { "id": "harness.boots", "area": "harness", "title": "Browser check: boots", "weight": 0.67, "status": "todo", "auto": { "proof": "re/verification/**/*boots*.json", "field": "ok" } },
+    { "id": "harness.cafe-text", "area": "harness", "title": "Browser check: cafe text", "weight": 0.67, "status": "todo", "auto": { "proof": "re/verification/**/*cafe-text*.json", "field": "ok" } },
+    { "id": "harness.credits", "area": "harness", "title": "Browser check: ending credits", "weight": 0.67, "status": "todo", "auto": { "proof": "re/verification/**/*credits*.json", "field": "ok" } },
+    { "id": "harness.extras", "area": "harness", "title": "Browser check: extras (CG and Sound Library)", "weight": 0.67, "status": "todo", "auto": { "proof": "re/verification/**/*extras*.json", "field": "ok" } },
+    { "id": "harness.http-boot", "area": "harness", "title": "Browser check: HTTP boot", "weight": 0.67, "status": "todo", "auto": { "proof": "re/verification/**/*http-boot*.json", "field": "ok" } },
+    { "id": "harness.input", "area": "harness", "title": "Browser check: mouse and touch input", "weight": 0.67, "status": "todo", "auto": { "proof": "re/verification/**/*input*.json", "field": "ok" } },
+    { "id": "harness.interactions", "area": "harness", "title": "Browser check: interactions (menu, backlog, Hide Text)", "weight": 0.67, "status": "todo", "auto": { "proof": "re/verification/**/*interactions*.json", "field": "ok" } },
+    { "id": "harness.lifecycle", "area": "harness", "title": "Browser check: page lifecycle and storage", "weight": 0.67, "status": "todo", "auto": { "proof": "re/verification/**/*lifecycle*.json", "field": "ok" } },
+    { "id": "harness.menu-latency", "area": "harness", "title": "Browser check: menu latency", "weight": 0.67, "status": "todo", "auto": { "proof": "re/verification/**/*menu-latency*.json", "field": "ok" } },
+    { "id": "harness.menus", "area": "harness", "title": "Browser check: menus, save and load", "weight": 0.66, "status": "todo", "auto": { "proof": "re/verification/**/*menus*.json", "field": "ok" } },
+    { "id": "harness.pwa", "area": "harness", "title": "Browser check: PWA shell and offline root", "weight": 0.66, "status": "todo", "auto": { "proof": "re/verification/**/*pwa*.json", "field": "ok" } },
+    { "id": "harness.story-text", "area": "harness", "title": "Browser check: story text pages", "weight": 0.66, "status": "todo", "auto": { "proof": "re/verification/**/*story-text*.json", "field": "ok" } },
+    { "id": "harness.surfaces", "area": "harness", "title": "Browser check: WebGL surfaces", "weight": 0.66, "status": "todo", "auto": { "proof": "re/verification/**/*surfaces*.json", "field": "ok" } },
+    { "id": "harness.touch-scrollbar", "area": "harness", "title": "Browser check: touch scrollbar", "weight": 0.66, "status": "todo", "auto": { "proof": "re/verification/**/*touch-scrollbar*.json", "field": "ok" } },
+    { "id": "harness.compressed-media", "area": "harness", "title": "Browser check: representative compressed image and audio decodes", "weight": 0, "status": "todo", "auto": { "proof": "re/verification/compressed-media-browser.json", "field": "ok" } },
+    { "id": "harness.inline-wait", "area": "harness", "title": "Browser check: original inline wait, input and save restoration", "weight": 0, "status": "todo", "auto": { "proof": "re/verification/inline-wait*.json", "field": "ok" } },
+    { "id": "harness.font-tags", "area": "harness", "title": "Browser check: inline <FONT> colours and save/page strings", "weight": 0, "status": "todo", "auto": { "proof": "re/verification/font-tags*.json", "field": "ok" } },
+    { "id": "harness.title-load", "area": "harness", "title": "Browser check: title LOAD menu enter/exit and load-from-title", "weight": 0, "status": "todo", "auto": { "proof": "re/verification/title-load.json", "field": "ok" } },
+    { "id": "harness.touch-bar", "area": "harness", "title": "Browser check: touch bar buttons dispatch the original shortcuts", "weight": 0, "status": "todo", "auto": { "proof": "re/verification/touch-bar.json", "field": "ok" } },
+    { "id": "harness.storage-fallback", "area": "harness", "title": "Browser check: boot and notice with failing browser storage", "weight": 0, "status": "todo", "auto": { "proof": "re/verification/storage-fallback.json", "field": "ok" } },
+    { "id": "harness.choice-layout", "area": "harness", "title": "Browser check: original story choices and legacy save layout", "weight": 0, "status": "todo", "auto": { "proof": "re/verification/choice-layout-final.json", "field": "ok" } },
+    { "id": "harness.choice-touch", "area": "harness", "title": "Browser check: original choice press feedback, cancellation and release activation", "weight": 0, "status": "todo", "auto": { "proof": "re/verification/choice-touch-*.json", "field": "ok" } },
+    { "id": "harness.system-defaults", "area": "harness", "title": "Browser check: native settings defaults, common reload and original Config reset", "weight": 0, "status": "todo", "auto": { "proof": "re/verification/system-defaults-*.json", "field": "ok" } },
+    { "id": "harness.library-controls", "area": "harness", "title": "Browser check: CG navigation and Repeat artwork/audio boundary", "weight": 0, "status": "todo", "auto": { "proof": "re/verification/library-controls-final.json", "field": "ok" } },
+    { "id": "harness.mobile-guidance", "area": "harness", "title": "Browser check: first-run mobile tips and held Skip", "weight": 0, "status": "todo", "auto": { "proof": "re/verification/mobile-guidance-compressed.json", "field": "ok" } },
+    { "id": "harness.mobile-layout", "area": "harness", "title": "Browser check: touch controls outside the 4:3 game and landscape height", "weight": 0, "status": "todo", "auto": { "proof": "re/verification/mobile-layout-*.json", "field": "ok" } },
+    { "id": "harness.save-transfer", "area": "harness", "title": "Browser check: export, fresh-browser import and original LOAD", "weight": 0, "status": "todo", "auto": { "proof": "re/verification/save-transfer-layout.json", "field": "ok" } },
+
+    { "id": "mobile.iphone", "area": "mobile", "title": "Real iPhone Safari: boot, touch and audio", "weight": 3, "status": "partial", "partial": 0.75, "evidence": "User report on 2026-10-15, iPhone 16e: audio, held Skip, Menu, Backlog, Auto and Hide work. Landscape overlap was fixed and the user confirmed the new landscape layout on the device the same day. Choice confirmation timing and a ten-minute session remain outstanding. Credit is a checklist estimate from the device report." },
+    { "id": "mobile.homescreen", "area": "mobile", "title": "Add to Home Screen and standalone launch on iPhone", "weight": 1, "status": "partial", "partial": 0.9, "evidence": "User report on 2026-10-15, iPhone 16e: PWA installation/launch works; the full-height landscape layout was later confirmed on the device. Browser PWA proofs cover the shell, not full offline gameplay." },
+    { "id": "mobile.lifecycle", "area": "mobile", "title": "Audio interruption, resume and storage across mobile lifecycle on device", "weight": 1, "status": "partial", "partial": 0.5, "evidence": "User report on 2026-10-15, iPhone 16e: resume works. A ten-minute session, explicit interruption scenarios and physical save persistence/export/import remain untested; the user clarified that transfer backs up in-game saves and did not report a new save defect." }
+  ]
+}

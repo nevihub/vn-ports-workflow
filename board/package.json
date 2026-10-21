@@ -1,0 +1,18 @@
+{
+  "name": "vn-ports-board",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "One live ticket board, ticket CLI, audit and knowledge search for every VN port in this folder. Read-only board; never serves game data.",
+  "scripts": {
+    "board": "node board.mjs",
+    "stop": "node board.mjs --stop",
+    "snapshot": "node board.mjs --once",
+    "issue": "node issue.mjs",
+    "worktree-clean": "node worktree-clean.mjs",
+    "maintainer-sweep": "node maintainer-sweep.mjs",
+    "kb": "node kb.mjs",
+    "new-port": "node new-port.mjs",
+    "test": "node --test tests/*.test.mjs"
+  }
+}

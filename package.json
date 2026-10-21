@@ -1,0 +1,15 @@
+{
+  "name": "vn-ports-workflow",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Portable visual-novel browser-port workflow (stages, rules, board, templates). No game files, ever.",
+  "scripts": {
+    "board": "node board/board.mjs",
+    "kb": "node board/kb.mjs",
+    "new-port": "node board/new-port.mjs",
+    "issue": "node board/issue.mjs",
+    "check-clean": "node scripts/check-repo-clean.mjs",
+    "test": "node scripts/check-repo-clean.mjs && node --test board/tests/*.test.mjs"
+  }
+}

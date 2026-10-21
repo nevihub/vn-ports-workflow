@@ -1,0 +1,14 @@
+# Game content never enters git. Keep it in these folders (all ignored).
+game-data/
+re/
+ref/
+private/
+public/game/
+dist/
+engine/
+media/
+reader/
+node_modules/
+*.log
+# Runtime output (board snapshots, channel messages) — never commit.
+board/state/
