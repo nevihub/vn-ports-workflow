@@ -4,7 +4,11 @@ import { join } from 'node:path'
 import type { Plugin } from 'vite'
 import { shellIcons } from './shell-icons'
 
-/** The game id scopes the shell cache and icon names; it comes from game.config.json (ticket R1). */
+/** The game id scopes the shell cache and icon names; it comes from game.config.json (ticket R1).
+ *
+ * OPT-IN service worker: the default scaffold excludes it (DEFAULTS.md: manifest + icons only) and
+ * PORTING-GUIDE.md allows it solely as a shell-only cache — never precache the game, which always
+ * uses the network. Include `pwaShell()` in `vite.config.ts` only for explicit offline starts. */
 function gameId(): string {
   try {
     const id = JSON.parse(readFileSync(join(process.cwd(), 'game.config.json'), 'utf8'))?.game?.id

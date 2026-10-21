@@ -15,7 +15,7 @@ a line in its own `AGENTS.md`/`CLAUDE.md` (Saya is a faithful 1:1 port; Subahibi
 - **Page:** scales to fit the window; the site root is the player; tab title = the game's English title + its icon;
   "Loading x / total MB" bottom-left; nothing laid over the picture.
 - **Mobile:** touch bar (Menu, Backlog, hold Skip, Hide) with a hide option; long press = right click; install as
-  app (manifest + icons, no service worker); movie sound must work on iOS (unlock the video on the first tap). The
+  app (manifest + icons; service worker opt-in only, shell-only cache, never precache the game); movie sound must work on iOS (unlock the video on the first tap). The
   user tests on an iPhone 16e (Safari + Add to Home Screen).
 - **Saves:** export/import file for moving between devices.
 - **Audio:** a bigger buffer is fine (adaptive lead, up to ~1 s before fetches).

@@ -7,6 +7,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import * as boardCfg from '../lib/game-config.mjs'
 import * as templateCfg from '../../templates/scripts/lib/game-config.mjs'
+import { files as scaffoldFiles } from '../new-port.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const TEMPLATES = join(HERE, '..', '..', 'templates')
@@ -278,4 +279,15 @@ test('migrated deploy/split scripts run against a fixture game checkout', () => 
     'RE tooling usage names the config, not an executable')
   assert.match(run('make-pwa-icons.mjs', []), /not found at/,
     'missing executable warns and keeps existing icons instead of failing the build')
+})
+
+test('the service worker is opt-in: template marks it, defaults agree, scaffold excludes it', () => {
+  const pwa = readFileSync(join(TEMPLATES, 'scripts/pwa.ts'), 'utf8')
+  assert.ok(/OPT-IN/.test(pwa), 'pwa.ts header says the worker is opt-in')
+  assert.ok(/never precache the game/i.test(pwa), 'pwa.ts states the shell-only limit')
+  const defaults = readFileSync(join(HERE, '..', '..', 'knowledge', 'DEFAULTS.md'), 'utf8')
+  assert.ok(/service worker opt-in only/.test(defaults), 'DEFAULTS.md agrees: icons by default, worker opt-in')
+  const scaffolded = scaffoldFiles({ id: 'swtest', full: 'SW Test', name: 'SW Test', engine: 'KiriKiri' })
+  assert.ok(!Object.keys(scaffolded).some(f => /pwa|vite\.config|sw\.js/.test(f)),
+    'the default scaffold wires no service worker')
 })

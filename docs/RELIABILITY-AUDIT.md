@@ -41,7 +41,7 @@ Method: read the code named in each finding, reproduced the behavior where cheap
 ## Contradictions / hygiene (Phase 6)
 
 - ~~`README.md` title says "(private)" but the repo is public. Fix wording.~~ Fixed (title is now plain).
-- Service worker: `DEFAULTS.md` says shell-only/no-precache PWA without SW (`manifest + icons, no service worker`); `templates/scripts/pwa.ts` generates a service worker — reconcile (keep file, mark opt-in; default scaffold excludes it).
+- ~~Service worker: `DEFAULTS.md` says shell-only/no-precache PWA without SW (`manifest + icons, no service worker`); `templates/scripts/pwa.ts` generates a service worker — reconcile (keep file, mark opt-in; default scaffold excludes it).~~ Fixed (opt-in header on `pwa.ts`, DEFAULTS agrees, scaffold wires none; hygiene test asserts all three).
 - ~~`TEMPLATES.md` is written as if templates were copied verbatim from the Saya repo (grep for leftovers); after P0-3 it must describe config-driven files instead.~~ Fixed (P0-3e rewrite; only the migration-map row names the old markers).
 - ~~`docs/CHECKLIST.md` vs `AGENTS.md` loop: confirm the per-ticket loop matches the new gates (proof/waiver/user-ok).~~ Fixed (waiver, user-ok and Needs-refusal lines added; `docs-links.test.mjs` asserts them).
 
