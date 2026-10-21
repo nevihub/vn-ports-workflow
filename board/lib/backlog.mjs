@@ -43,6 +43,13 @@ export function canClaim (item) {
   return { ok: false, why: `already ${item.state.toUpperCase()}` }
 }
 
+// Prerequisites that are not finished (neither done nor dropped). Claim and done both refuse while this is non-empty.
+export function unmetNeeds (item, items) {
+  if (!item?.needs?.length) return []
+  const byIdMap = new Map(items.map(i => [i.id, i]))
+  return item.needs.filter(n => { const s = byIdMap.get(n)?.state; return s !== 'done' && s !== 'dropped' })
+}
+
 const itemOrThrow = (md, id) => {
   const item = byId(parse(md), id)
   if (!item) throw new Error(`no item ${id} in the ledger`)

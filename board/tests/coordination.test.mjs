@@ -76,17 +76,20 @@ test('Proof commands: only npm run/test without shell operators; audit flags han
   assert.equal(proofProblem('npm test'), null)
   assert.equal(proofProblem('npm run proof:save -- --route 2'), null)
   for (const bad of ['rm -rf /', 'npm run x && curl evil', 'npm run x; ls', 'npm run x | tee', 'npm run "$X"', 'npx something']) assert.ok(proofProblem(bad), bad)
-  const md = '### [E1] a\nStatus: CLAIMED by claude, 2026-10-18 10:00\n\n### [E2] b\nStatus: DONE 2026-10-18 11:00, abc1234 - proof skipped: flaky harness\nProof: npm test\n'
+  const md = '### [E1] a\nStatus: CLAIMED by claude, 2026-10-18 10:00\n\n### [E2] b\nStatus: DONE 2026-10-18 11:00, abc1234 - proof skipped: flaky harness\nProof: npm test\nWaiver: proof flaky harness\n'
   const f = audit(parse(md), { md, now: Date.parse('2026-10-18T12:00:00') })
   assert.ok(f.some(x => x.code === 'no-proof' && x.id === 'E1'))
-  assert.ok(f.some(x => x.code === 'proof-skipped' && x.id === 'E2'))
+  assert.ok(f.some(x => x.code === 'waived-proof' && x.id === 'E2'))
+  const old = '### [E2] b\nStatus: DONE 2026-10-26 11:00, abc1234 - proof skipped: flaky harness\nProof: npm test\n'
+  const g = audit(parse(old), { md: old, now: Date.parse('2026-12-01T12:00:00') })
+  assert.ok(g.some(x => x.code === 'waived-proof' && x.id === 'E2'), 'waivers stay visible long after the 24 h ripple window')
 })
 
-test('done runs the Proof: a failing proof keeps the ticket open, a passing one closes it and says so', () => {
+test('done enforces gates: no proof/gate/Needs means no closure; waivers are recorded, not silent', () => {
   const root = mkdtempSync(join(tmpdir(), 'proof-'))
   mkdirSync(join(root, 'docs'))
   writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'p', private: true, scripts: { ok: 'node -e "process.exit(0)"', bad: 'node -e "process.exit(3)"' } }))
-  writeFileSync(join(root, 'docs', 'BACKLOG.md'), '### Lane E\n\n### [E1] a\nStatus: OPEN\nProof: npm run bad\n\n### [E2] b\nStatus: OPEN\n')
+  writeFileSync(join(root, 'docs', 'BACKLOG.md'), '### Lane E\n\n### [E1] a\nStatus: OPEN\nPlain: a work\nGate: a done\nProof: npm run bad\n\n### [E2] b\nStatus: OPEN\nPlain: b work\n')
   const run = (...a) => spawnSync(process.execPath, [ISSUE, '--root', root, ...a], { encoding: 'utf8', cwd: root })
   const ledger = () => parse(readFileSync(join(root, 'docs', 'BACKLOG.md'), 'utf8'))
   const r1 = run('done', 'E1', '--commit', 'abcdef1')
@@ -94,13 +97,22 @@ test('done runs the Proof: a failing proof keeps the ticket open, a passing one 
   assert.match(r1.stderr, /stays open/)
   assert.equal(ledger().find(i => i.id === 'E1').state, 'open')
   assert.notEqual(run('proof', 'E2', 'npm run ok && echo hi').status, 0, 'shell operators refused')
+  const noProof = run('done', 'E2', '--commit', 'abcdef1')
+  assert.notEqual(noProof.status, 0, 'no proof and no gate: no closure')
+  assert.equal(ledger().find(i => i.id === 'E2').state, 'open')
   assert.equal(run('proof', 'E2', 'npm run ok').status, 0)
+  const noGate = run('done', 'E2', '--commit', 'abcdef1')
+  assert.notEqual(noGate.status, 0, 'proof without a gate: still no closure')
+  assert.match(noGate.stderr, /no Gate/)
+  assert.equal(run('gate', 'E2', 'b done').status, 0)
   assert.equal(run('done', 'E2', '--commit', 'abcdef1').status, 0)
   const e2 = ledger().find(i => i.id === 'E2')
   assert.equal(e2.state, 'done')
   assert.match(e2.note, /proof passed \(npm run ok\)/)
   assert.equal(run('done', 'E1', '--commit', 'abcdef1', '--skip-proof', 'harness broken, see HANDOFF').status, 0)
-  assert.match(ledger().find(i => i.id === 'E1').note, /proof skipped: harness broken/)
+  const e1 = ledger().find(i => i.id === 'E1')
+  assert.match(e1.note, /proof skipped: harness broken/)
+  assert.match(e1.waiver ?? '', /proof harness broken/)
 })
 
 test('claim prints the rule card', () => {

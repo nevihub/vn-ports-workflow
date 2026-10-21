@@ -7,7 +7,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { audit } from './lib/audit.mjs'
 import { agentBlock, agentKey, appendNote, byId, canClaim, claimWorktree, daysSince, elsewhereClaims, insertItem, localDate,
-  localDateTime, parse, proofProblem, rankNext, setFields, setNeeds, setPlain, setProgress, setRating, setStatus, summarise, toLF } from './lib/backlog.mjs'
+  localDateTime, parse, proofProblem, rankNext, setFields, setNeeds, setPlain, setProgress, setRating, setStatus, summarise, toLF, unmetNeeds } from './lib/backlog.mjs'
 import { fmt as fmtMsg, HEADER as CHANNEL_HEADER, KINDS, post, read as readChannel, setCursor, unread } from './lib/channel.mjs'
 import { appendLesson, recentLessons, storyLike } from './lib/knowledge.mjs'
 import { recoveryCards } from './lib/recovery.mjs'
@@ -95,12 +95,15 @@ const HELP = `usage: npm run issue [--] <command> [args]          (lanes here: $
   new "<title>" --lane X [--plain ".."] [--gate ".."] [--type task|bug|perf|verify|grunt|user]
                          [--prio P1|P2|P3] [--impact ".."] [--worth "+N%"] [--needs E1,M2] [--by "<agent/model>"]
   claim <ID> --by "<agent> [worktree]" [--model "<actual model>"] [--force]
+                                                    refuses unmet Needs: (even with --force); U and taken need --force
   model <ID> "<actual model>"                       record a known model; never infer it from the app name
   progress <ID> [--percent N] "what is happening"   live progress on the In progress card
   eta <ID> "<2-3 h>"                                the agent's own time estimate for the card ("none" clears)
   note <ID> "text" [--by "<who>"]                   dated bullet under the item (do not start the text with a date)
-  done <ID> [--note ".."] [--commit <sha>] [--skip-proof "why"]
-                                                    runs the Proof first; default commit = HEAD; prints ripples
+  done <ID> [--note ".."] [--commit <sha>] [--waive-proof "why"] [--user-ok "user answer"]
+                                                    gates: Needs done, Gate set (non-U), Proof passes; U needs --user-ok;
+                                                    --waive-proof records a human waiver (Waiver:), kept visible.
+                                                    --skip-proof is an alias. default commit = HEAD; prints ripples
                          [--before ".."] [--after ".."] [--evidence "checks / measured results"]
   summary <ID> --result "plain outcome" [--before ".."] [--after ".."] [--evidence ".."]
                                                     explain an existing result without changing status
@@ -110,6 +113,7 @@ const HELP = `usage: npm run issue [--] <command> [args]          (lanes here: $
   drop <ID> --reason ".."                           no longer worth doing
   reopen <ID>                                       back to OPEN
   plain <ID> "text"                                 the jargon-free sentence the user reads on the board
+  gate <ID> "text"                                  how we know it is done (done refuses without it, unless waived)
   rate <ID> [--prio P1|P2|P3] [--impact ".."] [--worth "+N%"]
   needs <ID> E1,M2 | none                           tickets that must be DONE first
   proof <ID> "npm run <script> [args]" | none       the command done runs; it must pass to close the ticket
@@ -235,6 +239,8 @@ function newCommand () {
   console.log(`${res.id}: OPEN - ${title}`)
   if (!str(flags.plain)) console.log(`hint: add the jargon-free sentence the board shows: npm run issue -- plain ${res.id} "one simple sentence"`)
   if (res.id[0] !== 'U') console.log(`hint: put ${res.id} on a timeline stage (its Tickets: line in docs/BACKLOG.md) - npm run issue -- audit checks it`)
+  if (res.id[0] !== 'U' && !str(flags.gate)) console.log(`hint: ${res.id} needs a Gate before it can close: npm run issue -- gate ${res.id} "<how we know it is done>"`)
+  if (res.id[0] !== 'U' && !str(flags.proof)) console.log(`hint: ${res.id} needs a Proof before it can close: npm run issue -- proof ${res.id} "npm run <script>"`)
 }
 
 function claimCommand (id) {
@@ -250,6 +256,8 @@ function claimCommand (id) {
   if (item.lane === 'U' && !flags.force) fail(`${item.id} is the user's - agents never start U items`)
   const blocked = agentBlock(item, agentKey(by), agentRules)
   if (blocked && !flags.force) fail(`${item.id}: ${blocked} (--force overrides)`)
+  const waiting = unmetNeeds(item, items)
+  if (waiting.length) fail(`${item.id} needs ${waiting.join(', ')} first - finish them before claiming (claiming blocked work hides the real next ticket)`)
   const status = `CLAIMED by ${by}, ${localDateTime()}`
   let next = setStatus(md, item.id, status)
   // A fresh claim must not inherit the previous worker's model.
@@ -312,19 +320,39 @@ function proofCommand (id) {
 function doneCommand (id) {
   const md0 = read()
   const item0 = getItem(md0, id, 'done')
+  const all0 = parse(md0)
+  // Agents never close the user's queue on their own: record what the user actually said or decided.
+  const userOk = str(flags['user-ok'])
+  if (item0.lane === 'U' && !userOk) {
+    fail(`${item0.id} is the user's - agents never close U items on their own. Ask the user, then record their answer: npm run issue -- done ${item0.id} --user-ok "<what the user said or decided>"`)
+  }
+  const waiting = unmetNeeds(item0, all0)
+  if (waiting.length) fail(`${item0.id} needs ${waiting.join(', ')} first - finish them before closing it`)
+  // Every non-user ticket needs a verifiable gate and a runnable proof. A human waiver is explicit, recorded
+  // in the ledger (Waiver:) and stays visible on the board - it is never silent.
+  const waiver = str(flags['waive-proof']) ?? str(flags['skip-proof'])
+  if (item0.lane !== 'U' && !item0.gate && !waiver) {
+    fail(`${item0.id} has no Gate - add how we know it is done first: npm run issue -- gate ${item0.id} "<how we know it is done>" (or record a human waiver with --waive-proof "<why>")`)
+  }
   let proofNote = ''
-  if (item0.proof && !str(flags['skip-proof'])) {
+  if (item0.proof && !waiver) {
     if (!runProof(item0)) fail(`${item0.id} stays open: its Proof failed. Fix the work (never the checker), or after two failed attempts: npm run issue -- block ${item0.id} --reason "..."`)
     proofNote = `proof passed (${item0.proof})`
-  } else if (item0.proof) proofNote = `proof skipped: ${str(flags['skip-proof'])}`
+  } else if (waiver) {
+    proofNote = `proof skipped: ${waiver}`
+  } else if (item0.lane !== 'U') {
+    fail(`${item0.id} has no Proof - add the command that proves the Gate first: npm run issue -- proof ${item0.id} "npm run <script>" (or record a human waiver with --waive-proof "<why>")`)
+  }
   const md = read()
   const item = getItem(md, id, 'done')
   const commit = str(flags.commit) ?? (git(['rev-parse', '--short', 'HEAD']) || null)
   const noteText = [str(flags.note), proofNote].filter(Boolean).join('; ')
   const status = `DONE ${localDateTime()}${commit ? `, ${commit}` : ''}${noteText ? ` - ${noteText}` : ''}`
+  const waiverField = waiver ? `proof ${waiver}` : (item.lane === 'U' && userOk ? `user-ok ${userOk}` : undefined)
   const next = setFields(setStatus(md, item.id, status), item.id, {
-    Result: str(flags.result) ?? str(flags.note) ?? item.result ?? item.plain ?? undefined,
+    Result: str(flags.result) ?? str(flags.note) ?? (item.lane === 'U' ? userOk : undefined) ?? item.result ?? item.plain ?? undefined,
     Before: str(flags.before), After: str(flags.after), Evidence: str(flags.evidence),
+    Waiver: waiverField,
   })
   write(next)
   console.log(`${item.id}: ${status}`)
@@ -355,6 +383,15 @@ function plainCommand (id) {
   const item = getItem(md, id, 'plain')
   write(setPlain(md, item.id, text))
   console.log(`${item.id}: Plain updated`)
+}
+
+function gateCommand (id) {
+  const text = positional.slice(1).join(' ').trim()
+  if (!text) fail('gate needs text: npm run issue -- gate E1 "how we know it is done"')
+  const md = read()
+  const item = getItem(md, id, 'gate')
+  write(setFields(md, item.id, { Gate: text }))
+  console.log(`${item.id}: Gate updated (done runs the Proof against it)`)
 }
 
 function rateCommand (id) {
@@ -533,6 +570,7 @@ switch (command) {
   case 'block': setStateCommand(positional[0], 'block', 'BLOCKED'); break
   case 'drop': setStateCommand(positional[0], 'drop', 'DROPPED'); break
   case 'plain': plainCommand(positional[0]); break
+  case 'gate': gateCommand(positional[0]); break
   case 'rate': rateCommand(positional[0]); break
   case 'progress': progressCommand(positional[0]); break
   case 'eta': etaCommand(positional[0]); break
@@ -552,5 +590,5 @@ switch (command) {
   default: fail(`unknown command "${command}"\n${HELP}`)
 }
 if (command === 'list' && positional.length === 0 && !Object.keys(flags).some(f => !['project', 'root'].includes(f))) {
-  console.log('\ncommands: npm run issue -- list|show|goal|next|audit|rules|inbox|say|channel|new|claim|progress|eta|note|done|block|drop|reopen|plain|rate|needs|proof|prove|learn|help')
+  console.log('\ncommands: npm run issue -- list|show|goal|next|audit|rules|inbox|say|channel|new|claim|progress|eta|note|done|block|drop|reopen|plain|gate|rate|needs|proof|prove|learn|help')
 }

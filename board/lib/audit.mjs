@@ -99,6 +99,10 @@ export function audit (items, { md = '', now = Date.now(), elsewhere = new Map()
     if (it.state !== 'claimed') continue
     const progAt = Date.parse(it.progressAt ?? '')
     const last = Math.max(at(it.date, it.time) ?? 0, lastNoteAt(it.notes) ?? 0, Number.isFinite(progAt) ? progAt : 0)
+    const waiting = it.needs.filter(n => byId.has(n) && !done(n) && byId.get(n).state !== 'dropped')
+    if (waiting.length) {
+      add('fix', 'needs-unmet', it.id, `${it.id} is CLAIMED but needs ${waiting.join(', ')} first - finish them or reopen it`, `npm run issue -- reopen ${it.id}`)
+    }
     if (last && now - last > staleHours * 3600_000) {
       const h = Math.floor((now - last) / 3600_000)
       add('check', 'stale-claim', it.id, `${it.id} claimed by ${it.owner ?? '?'} with no update for ${h} h`, `npm run issue -- progress ${it.id} --percent N "what is happening"  (or reopen ${it.id} if that agent is gone)`)
@@ -132,12 +136,17 @@ export function audit (items, { md = '', now = Date.now(), elsewhere = new Map()
     }
   }
 
-  // Proofs: work judged only by hand, and checks that were skipped.
+  // Proofs: work judged only by hand, waived proofs, and legacy closures from before gates were enforced.
+  // A waiver never expires: once a ticket is DONE without a passing Proof it stays visibly distinguishable.
+  const waivedOf = it => it.waiver ?? (/proof\s*(skipped|waived)\s*:?\s*(.*)$/im.test(it.note ?? '') ? `legacy: ${it.note.match(/proof\s*(skipped|waived)\s*:?\s*(.*)$/im)?.[2]?.trim() || 'no reason recorded'}` : null)
   for (const it of tickets) {
     if (it.state === 'claimed' && !it.proof && it.lane !== 'U') add('info', 'no-proof', it.id, `${it.id} is in progress with no Proof command - its Gate is judged by hand`, `npm run issue -- proof ${it.id} "npm run <script>"`)
-    const t = at(it.date, it.time)
-    if (it.state === 'done' && /proof skipped/i.test(it.note ?? '') && t && now - t < recentHours * 3600_000) {
-      add('check', 'proof-skipped', it.id, `${it.id} was closed without running its Proof (${it.note.match(/proof skipped:?\s*(.*)$/i)?.[1] ?? '?'})`)
+    if (it.state !== 'done') continue
+    const waived = waivedOf(it)
+    if (waived) {
+      add('check', 'waived-proof', it.id, `${it.id} was closed with a waived Proof (${waived}) - re-run the Proof before building on it`)
+    } else if (it.lane !== 'U' && !it.proof) {
+      add('check', 'unverified-done', it.id, `${it.id} is DONE with no Proof and no recorded waiver (closed before gates were enforced) - add a Proof and re-run it, or record a waiver`, `npm run issue -- proof ${it.id} "npm run <script>"`)
     }
   }
 

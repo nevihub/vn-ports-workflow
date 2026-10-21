@@ -103,7 +103,7 @@ export function collect (project, { now = Date.now() } = {}) {
       progress: pick('progress'), percent: pick('percent'), doing: pick('doing'), state, type: it.type,
       owner: pick('owner'), date, time, at, commit, reason: pick('reason'), gate: it.gate, notes: it.notes, body: body || null,
       note: pick('note'), created: pick('created'), createdBy: pick('createdBy'), model: pick('model'),
-      result: pick('result'), before: pick('before'), after: pick('after'), evidence: pick('evidence'),
+      result: pick('result'), before: pick('before'), after: pick('after'), evidence: pick('evidence'), waiver: pick('waiver'),
       unblock: pick('unblock'), related: pick('related') ?? [], topics: pick('topics') ?? [],
       blockedAt: pick('blockedAt'), reviewed: pick('reviewed'),
       tickets: it.tickets, weight: it.weight, playableStage: it.playableStage, hasStatus: it.hasStatus, staleHours,

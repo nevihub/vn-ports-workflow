@@ -141,6 +141,7 @@ const LEDGER = [
   'Prio: P3',
   'Needs: E1',
   'Gate: g',
+  'Proof: npm run ok',
   '',
   '### [E3] Third',
   'Plain: x',
@@ -332,6 +333,7 @@ test('the CLI edits the ledger of the checkout given by --root, claims are guard
   const root = mkdtempSync(join(tmpdir(), 'issue-'))
   mkdirSync(join(root, 'docs'))
   writeFileSync(join(root, 'docs', 'BACKLOG.md'), LEDGER.replace(/\n/g, '\r\n'))
+  writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'p', private: true, scripts: { ok: 'node -e "process.exit(0)"' } }))
   const run = (...a) => execFileSync(process.execPath, [ISSUE, '--root', root, ...a], { encoding: 'utf8', cwd: root })
   assert.match(run('next', '--agent', 'claude'), /^next: E2/m)
   assert.match(run('goal'), /You are here: \[S1\]/)

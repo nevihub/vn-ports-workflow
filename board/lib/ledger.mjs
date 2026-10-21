@@ -57,7 +57,7 @@ export function parse (md) {
         impact: null, worth: null, progress: null, percent: null, doing: null, progressAt: null, tickets: [], weight: null,
         playableStage: false, hasStatus: false, needs: [], agents: null, proof: null, eta: null, notes: [], raw: null,
         created: null, createdBy: null, model: null, result: null, before: null, after: null, evidence: null,
-        unblock: null, related: [], topics: [], blockedAt: null, reviewed: null,
+        waiver: null, unblock: null, related: [], topics: [], blockedAt: null, reviewed: null,
         statusLine: -1, plainLine: -1, start: i, end: lines.length }
       items.push(cur)
       continue
@@ -78,7 +78,7 @@ export function parse (md) {
       else if (key === 'eta') cur.eta = v || null
       else if (key === 'related') cur.related = ids(v)
       else if (key === 'topics') cur.topics = v.toLowerCase().split(/[\s,]+/).filter(Boolean)
-      else if (['created', 'model', 'result', 'before', 'after', 'evidence', 'unblock', 'reviewed'].includes(key)) cur[key] = v || null
+      else if (['created', 'model', 'result', 'before', 'after', 'evidence', 'waiver', 'unblock', 'reviewed'].includes(key)) cur[key] = v || null
       else if (key === 'createdby') cur.createdBy = v || null
       else if (key === 'blockedat') cur.blockedAt = v || null
       else if (key === 'agents') cur.agents = v.split(/[\s,]+/).map(a => a.toLowerCase()).filter(Boolean)
@@ -145,7 +145,7 @@ export function elsewhereClaims (mainItems, sources) {
             note: it.note, reason: it.reason, progress: it.progress, percent: it.percent, doing: it.doing,
             progressAt: it.progressAt,
             created: it.created, createdBy: it.createdBy, model: it.model, result: it.result, before: it.before,
-            after: it.after, evidence: it.evidence, unblock: it.unblock, related: it.related, topics: it.topics,
+            after: it.after, evidence: it.evidence, waiver: it.waiver, unblock: it.unblock, related: it.related, topics: it.topics,
             blockedAt: it.blockedAt, reviewed: it.reviewed,
             worktree: src.name, branch: src.branch ?? null })
         }
