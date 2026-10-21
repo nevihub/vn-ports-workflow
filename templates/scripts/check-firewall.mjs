@@ -10,11 +10,23 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { root, writeProof } from './lib/automation.mjs'
+import { derived, loadGameConfig } from './lib/game-config.mjs'
 
 const usage = 'Usage: node scripts/check-firewall.mjs [--help]'
 if (process.argv.slice(2).some(a => a === '--help' || a === '-h')) { console.log(usage); process.exit(0) }
 
-const FORBIDDEN_EXT = /\.(npa|nss|exe|dll|ogg|wav|mp3|m4a|aac|jpg|jpeg|png|bmp|webp|gif|mpg|mpeg|avi|wmv|ttf|otf)$/i
+// Game file types come from game.config.json (ticket R1 narrows them); without a readable config the
+// check cannot know this game's shapes, so it refuses instead of passing blind (fail closed).
+const { config, errors } = loadGameConfig(root)
+if (!config || errors.length) {
+  console.error(`firewall: FAIL - ${(errors.join('; ') || 'unreadable')} (fill game.config.json, ticket R1)`)
+  process.exit(1)
+}
+const { exts: ARCHIVE_EXTS, scriptExt: SCRIPT_EXT } = derived(config)
+const safeExts = [...ARCHIVE_EXTS, ...(SCRIPT_EXT ? [SCRIPT_EXT] : [])]
+const extPattern = safeExts.map(e => e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')
+
+const FORBIDDEN_EXT = new RegExp(`\\.(${extPattern}|exe|dll|ogg|wav|mp3|m4a|aac|opus|jpg|jpeg|png|bmp|webp|avif|gif|mpg|mpeg|avi|wmv|mp4|webm|ttf|otf|pfs)$`, 'i')
 const FORBIDDEN_DIR = /^(public\/game|game-data|dist|ref|re)\//
 const MAX_BYTES = 2 * 1024 * 1024, SIZE_EXEMPT = new Set(['package-lock.json'])
 const K = 8
@@ -42,13 +54,17 @@ const tokens = text => {
 const shingles = toks => { const s = []; for (let i = 0; i + K <= toks.length; i++) s.push(toks.slice(i, i + K).map(t => t[0]).join(' ')); return s }
 
 function loadStoryText() {
-  const utf8 = join(root, 'game-data/nss-utf8'), raw = join(root, 'game-data/nss')
+  // Script folder follows the configured script extension (game-data/<ext>[-utf8]); the <PRE> block
+  // split below is the NSS story format — ticket E1 replaces it with this engine's string source.
+  if (!SCRIPT_EXT) return null
+  const utf8 = join(root, `game-data/${SCRIPT_EXT}-utf8`), raw = join(root, `game-data/${SCRIPT_EXT}`)
   const dir = existsSync(utf8) ? utf8 : existsSync(raw) ? raw : null
   if (!dir) return null
   const decoder = new TextDecoder(dir === utf8 ? 'utf-8' : 'shift_jis')
   const blocks = []
   let opens = 0, closes = 0
-  for (const name of readdirSync(dir).filter(n => /\.nss$/i.test(n))) {
+  const scriptRe = new RegExp(`\\.${SCRIPT_EXT}$`, 'i')
+  for (const name of readdirSync(dir).filter(n => scriptRe.test(n))) {
     const text = decoder.decode(readFileSync(join(dir, name)))
     // Outermost <PRE> spans only: inline <PRE></PRE> inside a story block must not cut the block short.
     let depth = 0, start = 0
@@ -118,7 +134,7 @@ const ok = violations.length === 0 && fingerprint.selfTest !== 'fail'
 const proof = { createdAt: new Date().toISOString(), ok, filesChecked: files.length, fingerprint, violations }
 await writeProof('re/verification/firewall.json', proof)
 for (const v of violations) console.log(`  ${v.rule}: ${v.file}${v.lines ? ` lines ${v.lines.join(',')}${v.count > 20 ? ' …' : ''}` : ''}`)
-const textNote = !fingerprint.available ? 'story-text check UNAVAILABLE (no game-data/nss*)'
+const textNote = !fingerprint.available ? `story-text check UNAVAILABLE (no game-data/${SCRIPT_EXT ?? 'script'}* corpus yet, ticket E1)`
   : fingerprint.selfTest === 'fail' ? 'story-text self-test FAILED, check not trusted'
   : `story text ${fingerprint.filesScanned}/${textFiles} non-binary files vs ${fingerprint.shingles} shingles from ${fingerprint.blocks} blocks (blind to ${fingerprint.blindTo})`
 console.log(`Firewall ${ok ? 'PASS' : 'FAIL'} | ${files.length} files | ${violations.length} violations | ${textNote} | proof re/verification/firewall.json`)

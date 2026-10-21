@@ -135,9 +135,18 @@ test('the template firewall reads staged content and catches a synthetic story-t
   mkdirSync(join(root, 'scripts', 'lib'), { recursive: true })
   mkdirSync(join(root, 'docs'), { recursive: true })
   mkdirSync(join(root, 'game-data', 'nss'), { recursive: true })
-  for (const f of ['scripts/check-firewall.mjs', 'scripts/lib/automation.mjs']) {
+  for (const f of ['scripts/check-firewall.mjs', 'scripts/lib/automation.mjs', 'scripts/lib/game-config.mjs']) {
     copyFileSync(join(HERE, '..', '..', 'templates', ...f.split('/')), join(root, ...f.split('/')))
   }
+  writeFileSync(join(root, 'game.config.json'), JSON.stringify({
+    version: 1,
+    game: { id: 'tplfw', title: 'Template Firewall Fixture', edition: 'test', engine: 'test' },
+    runtime: { strategy: 'unknown', openRuntime: null, license: null, note: 'fixture' },
+    content: { archiveExtensions: ['npa'], archiveNames: ['cg'], scriptExtensions: ['nss'], expectedScriptCount: null, storyCorpus: null },
+    build: { devPort: 5321, partSizeBytes: 1048576, renderWidth: 800, renderHeight: 600 },
+    native: { exePath: null, sha256: null, note: 'fixture' },
+    deploy: { project: null, domain: null, branch: 'main', note: 'fixture' },
+  }))
   writeFileSync(join(root, '.gitignore'), 'game-data/\nre/\nref/\nprivate/\npublic/game/\ndist/\n')
   writeFileSync(join(root, 'docs', 'progress-checklist.json'), JSON.stringify({ items: [] }))
   execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: root })

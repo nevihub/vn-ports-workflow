@@ -6,6 +6,7 @@
   "description": "Portable visual-novel browser-port workflow (stages, rules, board, templates). No game files, ever.",
   "scripts": {
     "board": "node board/board.mjs",
+    "doctor": "node board/doctor.mjs",
     "kb": "node board/kb.mjs",
     "new-port": "node board/new-port.mjs",
     "issue": "node board/issue.mjs",

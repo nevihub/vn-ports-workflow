@@ -15,6 +15,7 @@ const TEMPLATES = join(HERE, '..', '..', 'templates')
 // the suite then holds it to the same bar: no hard-coded game, clean syntax, schema agreement.
 const MIGRATED = [
   'scripts/lib/game-config.mjs',
+  'scripts/check-firewall.mjs',
   'scripts/split-archives.mjs',
   'scripts/deploy.mjs',
   'scripts/verify.mjs',
@@ -174,6 +175,39 @@ test('the manifest template is valid JSON with the title as its only placeholder
   const manifest = JSON.parse(raw)
   assert.ok(!/saya/i.test(raw), 'manifest still names the Saya game')
   assert.ok(manifest.name.includes('game.config.json'), 'manifest points at the config for its title')
+})
+
+test('template firewall reads game exts from config and catches planted story text', () => {
+  process.env.GIT_AUTHOR_NAME ??= 'hygiene-test'
+  process.env.GIT_AUTHOR_EMAIL ??= 'hygiene-test@example.com'
+  process.env.GIT_COMMITTER_NAME ??= 'hygiene-test'
+  process.env.GIT_COMMITTER_EMAIL ??= 'hygiene-test@example.com'
+  const dir = mkdtempSync(join(tmpdir(), 'hy-fw-'))
+  const cfg = good()
+  cfg.content.archiveExtensions = ['xp3']
+  cfg.content.scriptExtensions = ['xp3']
+  writeFileSync(join(dir, 'game.config.json'), JSON.stringify(cfg))
+  const scripts = join(dir, 'scripts')
+  cpSync(join(TEMPLATES, 'scripts'), scripts, { recursive: true })
+  writeFileSync(join(dir, '.gitignore'), 'game-data/\nre/\ndist/\npublic/game/\n')
+  mkdirSync(join(dir, 'game-data', 'xp3'), { recursive: true })
+  const canary = 'alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu'
+  writeFileSync(join(dir, 'game-data', 'xp3', 'story.xp3'), `<PRE>${canary}</PRE>`)
+  const git = (...args) => execFileSync('git', args, { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+  const fw = () => spawnSync(process.execPath, [join(scripts, 'check-firewall.mjs')],
+    { encoding: 'utf8', cwd: dir, stdio: ['ignore', 'pipe', 'pipe'] })
+  git('init', '-q', '-b', 'main')
+  git('add', '-A')
+  git('commit', '-q', '-m', 'skeleton')
+  const clean = fw()
+  assert.equal(clean.status, 0, clean.stderr)
+  assert.match(clean.stdout, /Firewall PASS/, 'corpus present and no leak')
+  assert.match(clean.stdout, /1 blocks/, 'the corpus shingles were built')
+  writeFileSync(join(dir, 'notes.txt'), `header\n\n${canary}\n`)
+  const dirty = fw()
+  assert.notEqual(dirty.status, 0, 'leaked story text fails')
+  assert.match(dirty.stdout, /story-text: notes\.txt/, 'the leak names the file, never its text')
+  assert.ok(!dirty.stdout.includes(canary), 'matched text is never printed')
 })
 
 test('migrated deploy/split scripts run against a fixture game checkout', () => {
