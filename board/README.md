@@ -6,8 +6,22 @@ loop agents follow ("continue <game>") is in `..\AGENTS.md`.
 ## The board (`npm run board`, here or in any game folder)
 Read-only: it reads each game's `docs/BACKLOG.md` (+ `HANDOFF.md` / `STATUS.md` for the live link) and every other
 worktree's copy of it, and never serves game data. It picks a local port first; an optional phone link
-(a tunnel to it — see your setup) lets you read the board from your phone. The page polls
+(a tunnel to it — see below) lets you read the board from your phone. The page polls
 every 3 s; the server restarts itself when `board.mjs` or anything in `lib/` changes.
+
+### Exposure: what a tunnel (or a local page) can and cannot do
+The server binds `127.0.0.1` only, but a tunnel makes it remote, and any local page or browser
+extension can send arbitrary headers — so the `x-board` header is **not** a secret. The real exposure:
+- **Read-only routes** (`/`, `/projects.json`, `/data.json`, `/health`): full ledger/agent/model/channel JSON for
+  every game. By design public on the board — but a tunnel publishes agent notes, model names and working
+  claims to whoever has the URL. Only tunnel when you accept that, and never post secrets or personal data
+  in tickets, notes or the channel (the checkers refuse credentials-shaped text; story text is refused too).
+- **The one mutating route** (`/shutdown`): stops the server. Without `BOARD_TOKEN` it takes the bare
+  header; **set `BOARD_TOKEN` to a long random value before opening any tunnel**
+  (`BOARD_TOKEN=... npm run board`), and `node board.mjs --stop` sends it automatically.
+  With the token set, the bare header is refused (tested in `tests/board-token.test.mjs`).
+- The board never writes ledgers, runs proofs, pushes, or serves game data — closing or reading it
+  cannot change a game checkout. New tunnels/phone URLs go through the user (agents never publish).
 
 - **All ports**: every game's progress, "playable?" badge, current stage, how many things need attention and how
   many tickets are ready; below, the newest **lessons from every port**.

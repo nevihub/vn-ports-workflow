@@ -8,8 +8,9 @@
 //   node board.mjs --serve            run the server in the foreground (debugging; the default spawns this detached)
 //   node board.mjs --no-open          do not open a browser
 //
-// The server is read-only: it serves /, /projects.json, /data.json?p=<id>, /health and /shutdown (that one only with
-// the x-board header, so a random web page cannot stop it). It never serves game data: it reads each project's
+// The server is read-only except /shutdown: without BOARD_TOKEN that route needs the x-board header
+// (a random web page cannot stop it); with BOARD_TOKEN set it needs the token header instead, so set the
+// token whenever a tunnel exposes the board beyond this machine. It never serves game data: it reads each project's
 // docs/BACKLOG.md and HANDOFF.md/STATUS.md, plus every other checkout's ledger (git worktrees, read-only), so in-flight
 // claims in other copies are visible. Port 5461 first: the phone tunnel (board.example.com) points there.
 // State: state/board-server.json (ignored). Page: board-page.html. Ledger maths: lib/ledger.mjs.
@@ -49,6 +50,24 @@ const fnv = s => {
 const readText = p => { try { return readFileSync(p, 'utf8') } catch { return null } }
 
 export { loadProjects }
+
+// Mutating surface: only /shutdown changes server state, and only with proof it is us.
+// Without BOARD_TOKEN (plain local use) it needs the x-board header, which a random web page
+// cannot forge into a POST... actually any local page or extension CAN send that header, and a
+// tunnel turns local into remote. So: set BOARD_TOKEN whenever the board is reachable beyond this
+// machine (phone tunnel); then /shutdown needs the token and the header alone is refused.
+export function shutdownHeaders () {
+  const headers = { 'x-board': 'yes' }
+  if (process.env.BOARD_TOKEN) headers['x-board-token'] = process.env.BOARD_TOKEN
+  return headers
+}
+
+// Separated for tests: the read-only routes never check this.
+export function shutdownAllowed (req) {
+  const token = process.env.BOARD_TOKEN
+  if (token) return req.headers['x-board-token'] === token
+  return req.headers['x-board'] === 'yes'
+}
 
 const grabFrom = (root, spec, key) => {
   if (!spec?.file || !spec[key]) return null
@@ -208,7 +227,7 @@ async function findServer ({ any = false } = {}) {
 }
 
 async function stopAt (port) {
-  try { await fetch(`http://127.0.0.1:${port}/shutdown`, { headers: { 'x-board': 'yes' } }) } catch {}
+  try { await fetch(`http://127.0.0.1:${port}/shutdown`, { headers: shutdownHeaders() }) } catch {}
   for (let i = 0; i < 30; i++) {
     if (!(await health(port))) return true
     await sleep(100)
@@ -270,7 +289,7 @@ function serve () {
       return send(200, 'application/json', JSON.stringify({ app: APP, pid: process.pid, startedAt, scriptMtime }))
     }
     if (url.pathname === '/shutdown') {
-      if (req.headers['x-board'] !== 'yes') return send(403, 'text/plain', 'forbidden')
+      if (!shutdownAllowed(req)) return send(403, 'text/plain', 'forbidden')
       send(200, 'application/json', '{"ok":true}')
       return setTimeout(bye, 60)
     }

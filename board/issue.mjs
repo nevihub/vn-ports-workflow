@@ -11,6 +11,7 @@ import { agentBlock, agentKey, appendNote, byId, canClaim, claimWorktree, daysSi
 import { fmt as fmtMsg, HEADER as CHANNEL_HEADER, KINDS, post, read as readChannel, setCursor, unread } from './lib/channel.mjs'
 import { appendLesson, recentLessons, storyLike } from './lib/knowledge.mjs'
 import { recoveryCards } from './lib/recovery.mjs'
+import { release as releaseClaim, tryClaim } from './lib/claim-lock.mjs'
 import { timeline } from './lib/ledger.mjs'
 import { lock as lockOracles } from './lib/oracles.mjs'
 import { loadProjects } from './lib/projects.mjs'
@@ -258,8 +259,17 @@ function claimCommand (id) {
   if (blocked && !flags.force) fail(`${item.id}: ${blocked} (--force overrides)`)
   const waiting = unmetNeeds(item, items)
   if (waiting.length) fail(`${item.id} needs ${waiting.join(', ')} first - finish them before claiming (claiming blocked work hides the real next ticket)`)
+  // Cross-checkout lock: exactly one winner even when two agents claim from two checkouts at once.
+  // --force takes a held lock over deliberately and records it below - never silently.
+  const session = str(flags.session) ?? (git(['rev-parse', '--abbrev-ref', 'HEAD']) || 'main')
+  const lock = tryClaim(root, { project: project?.id ?? 'board', ticket: item.id, owner: by, session, force: !!flags.force })
+  if (lock.skipped) console.log(`note: ${lock.reason}`)
+  if (!lock.ok) fail(`${item.id} claim locked: ${lock.reason} (--force takes it over deliberately)`)
   const status = `CLAIMED by ${by}, ${localDateTime()}`
   let next = setStatus(md, item.id, status)
+  if (lock.takeover && lock.previous) {
+    next = appendNote(next, item.id, `${localDateTime()} ${by}: claim lock taken over from ${lock.previous.owner ?? '?'} (${lock.previous.session ?? '?'})${flags.force ? ' with --force' : ' (stale lock)'}`)
+  }
   // A fresh claim must not inherit the previous worker's model.
   next = setFields(next, item.id, { Model: str(flags.model) ?? '' })
   write(next)
@@ -355,6 +365,8 @@ function doneCommand (id) {
     Waiver: waiverField,
   })
   write(next)
+  // The ticket is closed: nobody should hold its claim lock anymore, whoever held it.
+  releaseClaim(root, { project: project?.id ?? 'board', ticket: item.id })
   console.log(`${item.id}: ${status}`)
   const ripples = audit(parse(next), { md: next }).filter(f => f.id === item.id && /^ripple|^unblocked/.test(f.code) ||
     (f.code === 'ripple-stage' && f.text.includes(item.id)))
@@ -371,6 +383,9 @@ function setStateCommand (id, cmd, prefix) {
   let next = setStatus(md, item.id, `${prefix}: ${reason}`)
   if (cmd === 'block') next = setFields(next, item.id, { BlockedAt: new Date().toISOString(), Reviewed: '',
     Unblock: str(flags.unblock), Related: str(flags.related), Topics: str(flags.topics) })
+  // Dropped work is abandoned: release the claim lock so the ticket is claimable fresh. A block keeps
+  // its lock (the holder may resume; the 2 h stale window covers a dead session).
+  if (cmd === 'drop') releaseClaim(root, { project: project?.id ?? 'board', ticket: item.id })
   write(next)
   console.log(`${item.id}: ${prefix}: ${reason}`)
   if (cmd === 'block') console.log('escalate: write what you tried + evidence into the HANDOFF top block, then move on to `next`.')
@@ -448,7 +463,8 @@ function reopenCommand (id) {
   const md = read()
   const item = getItem(md, id, 'reopen')
   write(setStatus(md, item.id, 'OPEN'))
-  console.log(`${item.id}: OPEN`)
+  releaseClaim(root, { project: project?.id ?? 'board', ticket: item.id })
+  console.log(`${item.id}: OPEN (claim lock released - claim again to take it)`)
 }
 
 function metadataCommand (id, kind) {
