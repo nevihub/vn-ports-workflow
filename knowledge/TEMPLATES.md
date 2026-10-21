@@ -28,7 +28,7 @@ scripts for the old game's markers (`saya`, `.npa`, `5317`, `example.com`);
 | `tools/x86dis.py` | fast capstone disassembly queries | none (generic PE x86) |
 | `scripts/split-archives.mjs` | split into blocks + `parts.json` with a content version | none: extension and block size come from the config |
 | `scripts/deploy.mjs`, `check-deploy.mjs`, `check-shell-assets.mjs` | build → deploy → smoke/byte checks | none: project, domain, cache name, archives, title assertions all come from the config |
-| `functions/_middleware.ts`, `public/_routes.json` | Pages cache headers | none for the middleware (matches any split-block shape); narrow `_routes.json` to `/game/*` (P1) |
+| `functions/_middleware.ts`, `public/_routes.json`, `public/_headers` | Pages cache headers | none: routes already cover only `/game/*`, headers cache hashed assets and revalidate entry points |
 | `scripts/pwa.ts`, `scripts/shell-icons.ts`, `public/manifest.webmanifest` | PWA shell, SW, fallback icons, manifest | manifest `name`/`short_name` from the config title; cache prefix follows `game.id` |
 | `src/mobile/*` | touch input, held skip, safe-area layout, first-run tips | shortcut keys the game registers; 4:3 still fits 1280×960; storage key is origin-scoped already |
 | `src/archive/sha256.ts` | portable SHA-256 for non-secure contexts | none |

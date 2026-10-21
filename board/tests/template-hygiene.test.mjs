@@ -177,6 +177,42 @@ test('the manifest template is valid JSON with the title as its only placeholder
   assert.ok(manifest.name.includes('game.config.json'), 'manifest points at the config for its title')
 })
 
+test('functions run only on game blocks: routes narrow, headers immutable-only for hashed assets', () => {
+  const routes = JSON.parse(readFileSync(join(TEMPLATES, 'public/_routes.json'), 'utf8'))
+  assert.equal(routes.version, 1)
+  assert.ok(routes.include.length > 0 && routes.include.every(p => p.startsWith('/game/')),
+    'every include stays under /game/* so static assets skip Functions entirely')
+  assert.ok(!routes.include.includes('/*'), 'no bare /* include: static requests stay on the free allowance')
+  // _routes.json wildcards match any number of segments; exclude wins over include.
+  const matches = (pattern, path) =>
+    new RegExp(`^${pattern.split('*').map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*')}$`).test(path)
+  const routed = path => routes.include.some(p => matches(p, path)) && !routes.exclude.some(p => matches(p, path))
+  assert.equal(routed('/game/cg.xp3.0'), true, 'split blocks run the middleware')
+  assert.equal(routed('/game/parts.json'), true, 'the manifest revalidates through the middleware')
+  assert.equal(routed('/assets/app-abc123.js'), false, 'hashed shell assets never invoke Functions')
+  assert.equal(routed('/'), false, 'the page itself never invokes Functions')
+  // _headers: immutable hashed assets, revalidating entry points, and no blanket /game rule that
+  // would freeze the versioned manifest (the middleware owns game-block headers).
+  const headers = readFileSync(join(TEMPLATES, 'public/_headers'), 'utf8')
+  const rules = []
+  let current = null
+  for (const line of headers.split('\n')) {
+    if (/^\s*(#|$)/.test(line)) continue
+    if (/^\S/.test(line)) { current = { path: line.trim(), directives: [] }; rules.push(current) }
+    else if (current) current.directives.push(line.trim())
+  }
+  assert.ok(rules.length >= 4, 'entry points and hashed assets each have a rule')
+  const directiveFor = path => rules.filter(r => matches(r.path, path)).flatMap(r => r.directives).join(';')
+  assert.ok(directiveFor('/assets/app-abc123.js').includes('immutable'), 'hashed assets cache for a year')
+  assert.ok(directiveFor('/sw.js').includes('no-cache'), 'the worker script revalidates so a new deploy takes over')
+  assert.ok(directiveFor('/').includes('no-cache'), 'the page revalidates')
+  assert.ok(!rules.some(r => r.path === '/game/*' || r.path === '/game/'),
+    'no blanket game rule: parts.json must revalidate through the middleware')
+  const mw = readFileSync(join(TEMPLATES, 'functions/_middleware.ts'), 'utf8')
+  assert.ok(!/\.npa/i.test(mw), 'middleware matches the block shape, not an extension')
+  assert.ok(/immutable/.test(mw) && /no-store/.test(mw), 'blocks immutable, everything else uncached')
+})
+
 test('template firewall reads game exts from config and catches planted story text', () => {
   process.env.GIT_AUTHOR_NAME ??= 'hygiene-test'
   process.env.GIT_AUTHOR_EMAIL ??= 'hygiene-test@example.com'

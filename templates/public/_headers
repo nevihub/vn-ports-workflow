@@ -1,0 +1,14 @@
+# Static-asset cache headers (parsed by Cloudflare Pages; this file itself is never served).
+# Game blocks (`/game/*.<n>`) are NOT listed here: functions/_middleware.ts marks only those
+# immutable, and the versioned parts.json must always revalidate, so a blanket /game/* rule
+# would serve a stale manifest.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+/icons/*
+  Cache-Control: public, max-age=31536000, immutable
+/
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Cache-Control: no-cache
+/sw.js
+  Cache-Control: no-cache
