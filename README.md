@@ -1,4 +1,4 @@
-# VN Ports Workflow (private)
+# VN Ports Workflow
 
 How we port visual novels to the browser — the shared method behind three ports (N2System, BGI, Artemis engines).
 
@@ -25,6 +25,14 @@ Playable (S4) is its own announced milestone — phones and polish come after, n
 2. Read `docs/PORTING-GUIDE.md` — pick your route: own VM (no open engine) or compile an open engine to WASM.
 3. Scaffold a game repo: `npm run new-port -- <id> "<Full name>" "<engine>"`.
 4. Work the tickets: `npm run issue -- goal`, `next`, `claim`, `done` (see `docs/CHECKLIST.md`).
+
+## Send an agent (copy-paste prompt)
+
+> Clone `<repo-url>`, `cd <game-folder>`, read `docs/AGENT-START.md` and follow it.
+> Your goal line first (`npm run issue -- goal`), then the loop. Decide with
+> `knowledge/DEFAULTS.md`; ask me only for what `AGENTS.md` says needs the user. Commit
+> locally, never push. Start by reporting Playable yes/no, the stage and %, and the tickets
+> you claimed.
 
 ## Which route? (pick once, in S0–S2)
 

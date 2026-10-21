@@ -25,6 +25,19 @@ Subahibi's phase plan: `subahibi-port-kit\docs\03-SUBAHIBI-PLAN.md`.
 2. Smallest correct change, a test for any non-trivial logic, the game's checks, then a local commit.
 3. `done`, `audit`, `learn` (one line if another port could use it), handoff top block.
 
+## Proof freshness at stage gates
+A proof goes stale the moment its evidence stops matching the tree — which is exactly when a
+stage exit would lie. Any S-gate ticket scored from stamped proofs (S2 census, S3 surface proofs,
+S4 route runs, S5/S6 device and budget proofs) wires freshness into its gate:
+
+- `Proof: npm run check-proofs -- --strict` (template script; fails on any passing-but-stale proof).
+- `fresh` — proof commit is HEAD's ancestor with no source change since, and no source file is
+  newer than the proof. `fresh-worktree` — same, but the tree was dirty when captured (mtime-dated).
+- `stale` — a source file changed after the proof (mtime path) or a source commit landed after the
+  proof's commit (commit path). Re-run the harness, never hand-edit the proof.
+- `untraceable` — the proof records no commit (old harness); re-capture it with a stamping harness.
+- `missing` — the checklist names a proof no file matches; the harness never ran.
+
 ## Reuse between ports
 Before building anything, `npm run kb -- "<what you need>"`: Saya and Subahibi solved hosting, saves, iOS audio,
 touch input and proof tooling already. Lift a piece into `knowledge/templates/` when a second port copies it.

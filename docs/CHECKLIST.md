@@ -8,6 +8,9 @@ For the full loop see `AGENTS.md`. This is the short version taped to the monito
 - [ ] `npm run issue -- next --agent <you>` — pick ready work (skips claimed/blocked/`U`/unmet `Needs:`).
 - [ ] `npm run issue -- claim <ID> --by "<agent> <worktree>" --model "<actual model>"` — one writer per checkout.
 - [ ] Ticket has `Plain:` (user-readable) and `Gate:` (how we know it is done). If `Proof:` is missing, set it: `npm run issue -- proof <ID> "npm run <script>"` (only `npm run`/`npm test`, plain args).
+- [ ] `claim`/`done` refuse while a `Needs:` is not done/dropped — finish the prerequisite first.
+  A `U` ticket needs the user: `done` requires `--user-ok "<what the user said>"`.
+  A skipped proof needs a recorded human waiver: `--waive-proof "<why>"` (permanent ledger field, audited).
 
 ## Do the work
 
