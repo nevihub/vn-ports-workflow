@@ -4,7 +4,12 @@ import { readFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
 import { Script } from 'node:vm'
-import { checkpoint, findCachedPackage, writeProof } from './lib/automation.mjs'
+import { checkpoint, findCachedPackage, root, writeProof } from './lib/automation.mjs'
+import { derived, requireGameConfig } from './lib/game-config.mjs'
+
+// Harnesses written against the local dev server bake in its origin; when --origin points
+// elsewhere the configured dev origin is rewritten so the same harness runs unmodified.
+const { devOrigin: DEFAULT_DEV_ORIGIN } = derived(requireGameConfig(root))
 
 const usage = `Usage: node scripts/run-browser-check.mjs <harness.js> <proof.json> [--origin URL]
 
@@ -57,7 +62,7 @@ async function main() {
     phase = 'harness'
     const page = await browser.newPage()
     let source = await readFile(resolve(harness), 'utf8')
-    if (origin) source = source.replaceAll('http://127.0.0.1:5317', origin.origin)
+    if (origin) source = source.replaceAll(DEFAULT_DEV_ORIGIN, origin.origin)
     const run = new Script(source, { filename: harness }).runInThisContext()
     if (typeof run !== 'function') throw Object.assign(new Error(), { code: 'INVALID_HARNESS' })
     const options = { ...extraOptions, commit: checkpointLabel, route: JSON.parse(process.env.GAME_ROUTE || '[]'),

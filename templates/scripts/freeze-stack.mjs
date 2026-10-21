@@ -4,8 +4,11 @@
 // Env: GAME_PLAYWRIGHT_MODULE, GAME_BROWSER_CHANNEL (as for run-browser-check.mjs).
 import { createRequire } from 'node:module'
 import { readFile } from 'node:fs/promises'
+import { root } from './lib/automation.mjs'
+import { derived, requireGameConfig } from './lib/game-config.mjs'
 
-const [scene, route = '[]', origin = 'http://localhost:5317', watch = '600'] = process.argv.slice(2)
+const { devPort } = derived(requireGameConfig(root))
+const [scene, route = '[]', origin = `http://localhost:${devPort}`, watch = '600'] = process.argv.slice(2)
 if (!scene) throw new Error('Usage: node scripts/freeze-stack.mjs <scene.nss> <route json> [origin] [watchSeconds]')
 const { chromium } = createRequire(import.meta.url)(process.env.GAME_PLAYWRIGHT_MODULE || 'playwright')
 const browser = await chromium.launch({ headless: true, channel: process.env.GAME_BROWSER_CHANNEL })

@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "Saya no Uta",
-  "short_name": "Saya no Uta",
+  "name": "<game title — copy game.config.json game.title when the port starts>",
+  "short_name": "<game title — copy game.config.json game.title when the port starts>",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

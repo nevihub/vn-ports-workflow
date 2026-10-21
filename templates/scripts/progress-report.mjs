@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Progress report for the Saya no Uta port.
+// Progress report for the port: titles come from game.config.json, items from the checklist.
 // Usage: node scripts/progress-report.mjs [--tests] [--json] [--write]
 // Reads docs/progress-checklist.json (rules are stated in that file). Proof files are parsed for their
 // ok/failedPhase fields only; no proof or script text is printed.
@@ -9,6 +9,13 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync, spawnSync } from 'node:child_process';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const TITLE = (() => {
+  try {
+    const title = JSON.parse(readFileSync(join(root, 'game.config.json'), 'utf8'))?.game?.title;
+    if (typeof title === 'string' && title.trim() && !/^<.*>$/.test(title.trim())) return title.trim();
+  } catch { /* fall through */ }
+  return 'web port';
+})();
 const wantTests = process.argv.includes('--tests');
 const asJson = process.argv.includes('--json');
 const writeReport = process.argv.includes('--write');
@@ -243,7 +250,7 @@ function generatedReport() {
     .join('\n');
   const testsLine = verificationSummary();
   const current = [
-    '# Saya no Uta web port: current progress',
+    `# ${TITLE} web port: current progress`,
     '',
     `Generated ${date} from \`docs/progress-checklist.json\` and the newest matching proof files. Source: ${workingTreeDirty ? 'dirty working tree' : 'clean working tree'}, based on HEAD \`${head}\` (${branch}).`,
     '',
@@ -271,7 +278,7 @@ function generatedReport() {
     '## Evidence limits',
     '',
     '- Scores inherit the evidence notes below and matching JSON proofs under ignored `re/verification/`; inspect those sources before treating a result as current runtime verification.',
-    '- Route coverage is recorded complete for all three endings at normal speed. This script reads proofs and checklist status; it does not replay routes.',
+    '- Route coverage is recorded in the checklist; this script reads proofs and checklist status, it does not replay routes.',
     '- Physical-device credit follows the recorded user reports. It does not establish untested scenarios or a complete device pass.',
     '',
     mobileEvidence,
@@ -293,7 +300,7 @@ function generatedReport() {
     historical = old.slice(bodyStart + bodyMarker.length).trim();
   } else {
     const sectionStart = old.indexOf('<!-- BEGIN HISTORICAL SNAPSHOT -->');
-    const originalStart = old.indexOf('# Saya no Uta web port: progress report', sectionStart >= 0 ? sectionStart : 0);
+    const originalStart = old.indexOf(`# ${TITLE} web port: progress report`, sectionStart >= 0 ? sectionStart : 0);
     historical = (originalStart >= 0 ? old.slice(originalStart) : old).trim();
   }
   return historical
@@ -328,7 +335,7 @@ if (writeReport) {
 
 const fmt = (x) => `${x.toFixed(1)}%`.padStart(6);
 const lines = [];
-lines.push(`Saya no Uta port progress  HEAD ${head} (${branch})`);
+lines.push(`${TITLE} port progress  HEAD ${head} (${branch})`);
 lines.push(`Overall ${fmt(overall)}   excluding mobile ${fmt(excludingMobile)}`);
 for (const a of areaRows) {
   lines.push(`  ${a.label.padEnd(26)}${fmt(a.pct)}  of ${a.weight}${a.mobile ? (a.paused ? '  (paused)' : '  (active)') : ''}`);

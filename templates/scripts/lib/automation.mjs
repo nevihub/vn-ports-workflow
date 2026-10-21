@@ -46,7 +46,7 @@ export function findCachedPackage(name) {
     for (let i = 0; i < 3; i++) { const difference = (b.version[i] || 0) - (a.version[i] || 0); if (difference) return difference }
     return b.mtime - a.mtime
   })
-  if (!candidates.length) throw new Error(`No installed ${name} package; install it once or configure its SAYA tool-path override`)
+  if (!candidates.length) throw new Error(`No installed ${name} package; install it once or configure its GAME tool-path override`)
   return candidates[0].path
 }
 

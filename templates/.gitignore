@@ -1,9 +1,16 @@
 node_modules/
 dist/
 debug.log
-# Copyrighted game content: never commit
+# Copyrighted game content: never commit. R1 narrows the archive/script lines to this
+# game's extensions (game.config.json content.archiveExtensions / content.scriptExtensions);
+# until then every common engine archive shape stays ignored.
 game-data/
+*.arc
+*.xp3
 *.npa
+*.pak
+*.dat
+*.rpa
 *.exe
 *.nss
 *.ogg

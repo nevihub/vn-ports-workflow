@@ -3,11 +3,18 @@ import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { resolve, sep } from 'node:path'
 import { checkpoint, root, writeProof } from './lib/automation.mjs'
+import { derived, requireGameConfig } from './lib/game-config.mjs'
+
+// The checked site defaults to the configured production domain (ticket U1); a placeholder refuses
+// with a pointer instead of probing someone else's example URL. Archive names are not needed here,
+// so this stays a dev-loop check: only a missing/unparsable config or placeholder domain refuses.
+const { domain } = derived(requireGameConfig(root))
+if (!domain) throw new Error('GAME_NOT_CONFIGURED: game.config.json deploy.domain is a placeholder (ticket U1 sets the production domain)')
 
 const usage = 'Usage: npm run check:shell -- [--origin URL] [--dist dist] [--proof re/verification/shell-assets.json]'
 const args = process.argv.slice(2)
 if (args.includes('--help') || args.includes('-h')) { console.log(usage); process.exit(0) }
-const options = { origin: 'https://<game>.example.com/', dist: 'dist', proof: 're/verification/shell-assets.json' }
+const options = { origin: domain, dist: 'dist', proof: 're/verification/shell-assets.json' }
 const sha = bytes => createHash('sha256').update(bytes).digest('hex')
 let proof
 try {

@@ -21,6 +21,19 @@ const MIGRATED = [
   'scripts/check-deploy.mjs',
   'scripts/native-query.mjs',
   'scripts/make-pwa-icons.mjs',
+  'scripts/check-shell-assets.mjs',
+  'scripts/run-browser-check.mjs',
+  'scripts/freeze-stack.mjs',
+  'scripts/progress-report.mjs',
+]
+
+// TypeScript sources: same naming bar, validated with type-stripping --check (no resolve, parse only).
+const MIGRATED_TS = [
+  'scripts/shell-icons.ts',
+  'scripts/pwa.ts',
+  'vite.config.ts',
+  'functions/_middleware.ts',
+  'src/mobile/tips.ts',
 ]
 
 // PowerShell scripts: same naming bar, but syntax is validated with the PS parser (win32) instead of node.
@@ -97,13 +110,29 @@ test('migrated template scripts name no game: no saya, hard-coded ext, port or d
 })
 
 test('migrated template scripts read game.config.json and parse clean', () => {
+  // progress-report.mjs reads only game.title (a report must render even before R1 validates the rest).
+  const TITLE_ONLY = new Set(['scripts/progress-report.mjs'])
   for (const rel of MIGRATED) {
-    if (rel.endsWith('lib/game-config.mjs')) continue
+    if (rel.endsWith('lib/game-config.mjs') || TITLE_ONLY.has(rel)) continue
     const text = readFileSync(join(TEMPLATES, rel), 'utf8')
     assert.ok(text.includes('lib/game-config.mjs'), `${rel} does not load the per-game config`)
   }
+  for (const rel of [...MIGRATED, ...TITLE_ONLY]) {
+    const text = readFileSync(join(TEMPLATES, rel), 'utf8')
+    assert.ok(text.includes('game-config') || text.includes('game.config.json'), `${rel} does not read the per-game config`)
+  }
   for (const rel of MIGRATED) {
     execFileSync(process.execPath, ['--check', join(TEMPLATES, rel)], { stdio: ['ignore', 'pipe', 'pipe'] })
+  }
+  for (const rel of MIGRATED_TS) {
+    const text = readFileSync(join(TEMPLATES, rel), 'utf8')
+    assert.ok(!/saya/i.test(text), `${rel} still names the Saya game`)
+    assert.ok(!/\.npa/i.test(text), `${rel} still hard-codes a .npa extension`)
+    execFileSync(process.execPath, ['--experimental-strip-types', '--check', join(TEMPLATES, rel)],
+      { stdio: ['ignore', 'pipe', 'pipe'] })
+  }
+  for (const rel of ['scripts/pwa.ts', 'vite.config.ts']) {
+    assert.ok(readFileSync(join(TEMPLATES, rel), 'utf8').includes('game.config.json'), `${rel} does not read the per-game config`)
   }
   for (const rel of MIGRATED_PS1) {
     const text = readFileSync(join(TEMPLATES, rel), 'utf8')
@@ -138,6 +167,13 @@ test('template loader refuses a missing config with a pointer, not a stack trace
   assert.throws(() => templateCfg.assertDeployable(freshScaffoldLike()), /DEPLOY_UNCONFIGURED:.*deploy\.project/)
   const ok = templateCfg.requireGameConfig(dir)
   assert.equal(ok.game.id, 'sengoku', 'dev-loop scripts run on warnings')
+})
+
+test('the manifest template is valid JSON with the title as its only placeholder', () => {
+  const raw = readFileSync(join(TEMPLATES, 'public/manifest.webmanifest'), 'utf8')
+  const manifest = JSON.parse(raw)
+  assert.ok(!/saya/i.test(raw), 'manifest still names the Saya game')
+  assert.ok(manifest.name.includes('game.config.json'), 'manifest points at the config for its title')
 })
 
 test('migrated deploy/split scripts run against a fixture game checkout', () => {

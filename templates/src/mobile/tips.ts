@@ -17,7 +17,8 @@ export function installMobileTips() {
     window.matchMedia('(pointer: coarse)').matches,
     window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true)
   if (!tips) return
-  const key = 'saya-mobile-tips-v1'
+  // One key per origin: every game ships on its own domain, so a shared neutral key is safe.
+  const key = 'mobile-tips-v1'
   try { if (localStorage.getItem(key) === 'dismissed') return } catch { /* denied storage must not block play */ }
   document.getElementById('mobiletips-audio')!.textContent = tips.audio
   const install = document.getElementById('mobiletips-install')!
