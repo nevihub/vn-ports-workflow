@@ -1,17 +1,30 @@
 // Renders the home-screen / PWA icons from the original game icon into public/game/icons/ (git-ignored).
-// The largest icon resource of saya.exe is extracted, composited on black, and scaled with ffmpeg.
-// Usage: node scripts/make-pwa-icons.mjs ["<game dir or saya.exe>"]
+// The largest icon resource of the configured executable is extracted, composited on black, and scaled with ffmpeg.
+// Usage: node scripts/make-pwa-icons.mjs ["<game dir or game.exe>"]
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
+import { root } from './lib/automation.mjs'
+import { derived, isPlaceholder, requireGameConfig } from './lib/game-config.mjs'
 
-const DEFAULT = '<game-install>'
-const input = process.argv[2] || process.env.GAME_GAME_DIR || DEFAULT
-const exe = input.toLowerCase().endsWith('.exe') ? input : path.join(input, 'saya.exe')
+const gameConfig = requireGameConfig(root)
+const { id, exeName } = derived(gameConfig)
+const configured = gameConfig.native?.exePath ?? null
+const input = process.argv[2] || process.env.GAME_GAME_DIR || configured || null
+if (!input || isPlaceholder(input)) {
+  console.warn(`make-pwa-icons: game.config.json native.exePath is still a placeholder (ticket R1); pass a game dir or exe, keeping any existing icons.`)
+  process.exit(0)
+}
+const leaf = input.toLowerCase().endsWith('.exe') ? null : (exeName ?? null)
+if (!leaf && !input.toLowerCase().endsWith('.exe')) {
+  console.warn(`make-pwa-icons: no executable name configured for dir ${input}; pass the exe directly, keeping any existing icons.`)
+  process.exit(0)
+}
+const exe = leaf ? path.join(input, leaf) : input
 const outDir = path.resolve('public/game/icons')
 if (!fs.existsSync(exe)) {
-  console.warn(`make-pwa-icons: saya.exe not found at ${exe}; keeping any existing icons.`)
+  console.warn(`make-pwa-icons: ${exeName ?? 'game executable'} not found at ${exe}; keeping any existing icons.`)
   process.exit(0)
 }
 
@@ -52,7 +65,7 @@ const entries = [...icons.entries()].sort((a, b) => b[1].size - a[1].size)
 const [, largest] = entries[0]
 
 // Decode the bitmap ourselves: the 8bpp frames rely on the AND mask, which ffmpeg's ICO decoder drops.
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'saya-icons-'))
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), `${id}-icons-`))
 const framePath = path.join(tmp, 'frame.ppm')
 const isPng = largest.data.length > 8 && largest.data.readUInt32BE(0) === 0x89504e47
 if (isPng) {

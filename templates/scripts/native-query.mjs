@@ -4,9 +4,16 @@ import { createReadStream } from 'node:fs'
 import { copyFile, mkdir, open, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 import { findCachedPackage, root, writeProof } from './lib/automation.mjs'
+import { derived, requireGameConfig } from './lib/game-config.mjs'
 
-const TARGET = '<game-install>/saya.exe'
-const TARGET_SHA256 = '903f298556f45174ea2dbeaf4a0aebe2986a54a47082fa2dbc4b14af672105c2'
+// The original executable is never committed and never fingerprinted by name in this script: both come
+// from game.config.json native.{exePath,sha256} (ticket R1 records them). Placeholders refuse to run.
+const gameConfig = requireGameConfig(root)
+const { exeName, sha256: TARGET_SHA256 } = derived(gameConfig)
+const TARGET = gameConfig.native?.exePath ?? null
+if (!TARGET || !TARGET_SHA256 || !exeName) {
+  throw new Error('GAME_NOT_CONFIGURED: game.config.json native.exePath/sha256 are placeholders (ticket R1 records the original executable and its SHA-256)')
+}
 const FALLBACK_GHIDRA = 'C:/Tools/ghidra_12.1.4_PUBLIC'
 const FALLBACK_JAVA = 'C:/Program Files/Eclipse Adoptium/jdk-21.0.12.101-hotspot'
 const PROVIDER = 'ghidra'
@@ -17,7 +24,7 @@ const usage = `Usage: npm run native-query -- [--refresh] <address> [address ...
        npm run native-query -- --import <complete-evidence.json>
        npm run native-query -- --status [address ...]
 
-Decompiles the immutable original saya.exe with the cached REA CLI and Ghidra.
+Decompiles the immutable original executable named in game.config.json with the cached REA CLI and Ghidra.
 Addresses run sequentially. Full JSON and stderr stay under ignored re/scratch/.
 Matching verified target/procedure/provider/tool evidence is cached locally.
 --refresh reruns addresses; --import validates and adopts an existing complete

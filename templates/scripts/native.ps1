@@ -1,9 +1,9 @@
-﻿# Drive a COPY of the original saya.exe for side-by-side comparison (never the user's install).
+﻿# Drive a COPY of the original game executable for side-by-side comparison (never the user's install).
 # The game reads the real mouse/keyboard (posted messages are ignored), so each input briefly focuses it, then gives
 # focus and the cursor back. Captures use PrintWindow and work while the game sits behind other windows (not minimized).
 #   native.ps1 start [gameDir]       launch (default re/native/game) behind the current window, print pid
-#   native.ps1 shot <out.png>        capture the client area, scaled to 800x600
-#   native.ps1 click <x> <y> [right] click at 800x600 game coordinates
+#   native.ps1 shot <out.png>        capture the client area, scaled to the configured render size
+#   native.ps1 click <x> <y> [right] click at game coordinates (configured render size)
 #   native.ps1 move <x> <y>          park the cursor on a point (hover state) without clicking
 #   native.ps1 key <name>            enter | esc | space | ctrl | up | down | left | right | a single letter/digit
 #   native.ps1 hold-ctrl <ms>        hold Ctrl (skip) for ms
@@ -31,9 +31,23 @@ public static class W {
 }
 '@
 $root = Split-Path $PSScriptRoot
+# The executable name and render size come from game.config.json (ticket R1 fills them in); nothing here
+# names a game. native-query.mjs pins the same executable by path plus SHA-256.
+$configPath = Join-Path $root 'game.config.json'
+$exeName = 'game.exe'
+$renderW = 800; $renderH = 600
+try {
+  $gameConfig = Get-Content -Raw -LiteralPath $configPath | ConvertFrom-Json
+  $configuredExe = Split-Path -Leaf $gameConfig.native.exePath
+  if ($configuredExe) { $exeName = $configuredExe }
+  if ($gameConfig.build.renderWidth -is [int] -and $gameConfig.build.renderWidth -gt 0) { $renderW = $gameConfig.build.renderWidth }
+  if ($gameConfig.build.renderHeight -is [int] -and $gameConfig.build.renderHeight -gt 0) { $renderH = $gameConfig.build.renderHeight }
+} catch { throw 'game.config.json is missing or unparsable: scaffold it, then fill ticket R1' }
+if ($exeName -like '*<*') { throw 'game.config.json native.exePath is still a placeholder (ticket R1 records the original executable)' }
+$procName = [IO.Path]::GetFileNameWithoutExtension($exeName)
 function Win {
-  $p = Get-Process saya -ErrorAction SilentlyContinue | Where-Object MainWindowHandle -ne 0 | Select-Object -First 1
-  if (!$p) { throw 'saya.exe is not running' }
+  $p = Get-Process $procName -ErrorAction SilentlyContinue | Where-Object MainWindowHandle -ne 0 | Select-Object -First 1
+  if (!$p) { throw "$exeName is not running" }
   if ([W]::IsIconic($p.MainWindowHandle)) { [W]::ShowWindow($p.MainWindowHandle, 4) | Out-Null } # SW_SHOWNOACTIVATE
   $p.MainWindowHandle
 }
@@ -53,7 +67,7 @@ switch ($cmd) {
     $dir = if ($a) { $a } else { Join-Path $root 're\native\game' }
     if ($dir -like '*<game-install>*') { throw 'Refusing to run the original install; use a copy' }
     $prev = [W]::GetForegroundWindow()
-    $p = Start-Process (Join-Path $dir 'saya.exe') -WorkingDirectory $dir -PassThru
+    $p = Start-Process (Join-Path $dir $exeName) -WorkingDirectory $dir -PassThru
     for ($i = 0; $i -lt 100 -and $p.MainWindowHandle -eq 0; $i++) { Start-Sleep -Milliseconds 100; $p.Refresh() }
     # Send the game to the back and give focus back to whatever the user was using.
     [W]::SetWindowPos($p.MainWindowHandle, [IntPtr]1, 0, 0, 0, 0, 0x13) | Out-Null # HWND_BOTTOM, NOSIZE|NOMOVE|NOACTIVATE
@@ -66,12 +80,12 @@ switch ($cmd) {
     $g = [System.Drawing.Graphics]::FromImage($bmp); $dc = $g.GetHdc()
     [W]::PrintWindow($h, $dc, 3) | Out-Null # PW_CLIENTONLY | PW_RENDERFULLCONTENT
     $g.ReleaseHdc($dc); $g.Dispose()
-    $out = New-Object System.Drawing.Bitmap $bmp, 800, 600
+    $out = New-Object System.Drawing.Bitmap $bmp, $renderW, $renderH
     $out.Save([IO.Path]::GetFullPath($a), [System.Drawing.Imaging.ImageFormat]::Png); $bmp.Dispose(); $out.Dispose()
-    "800x600 (from ${w}x$hh) -> $a"
+    "$($renderW)x$renderH (from ${w}x$hh) -> $a"
   }
   'click' {
-    $h = Win; $w, $hh = Size $h; $k = $w / 800
+    $h = Win; $w, $hh = Size $h; $k = $w / $renderW
     $o = New-Object W+PT; [W]::ClientToScreen($h, [ref]$o) | Out-Null
     $down, $up = if ($c -eq 'right') { 8, 16 } else { 2, 4 }
     WithFocus $h {
@@ -81,7 +95,7 @@ switch ($cmd) {
   }
   'move' {
     # Hover without clicking: park the cursor over a point while the game briefly has focus.
-    $h = Win; $w, $hh = Size $h; $k = $w / 800
+    $h = Win; $w, $hh = Size $h; $k = $w / $renderW
     $o = New-Object W+PT; [W]::ClientToScreen($h, [ref]$o) | Out-Null
     WithFocus $h {
       [W]::SetCursorPos($o.X + [int]([int]$a * $k), $o.Y + [int]([int]$b * $k)) | Out-Null
@@ -93,6 +107,6 @@ switch ($cmd) {
     WithFocus $h { Key $vk $false; Start-Sleep -Milliseconds 60; Key $vk $true }
   }
   'hold-ctrl' { $h = Win; WithFocus $h { Key 0x11 $false; Start-Sleep -Milliseconds ([int]$a); Key 0x11 $true } }
-  'stop' { Get-Process saya -ErrorAction SilentlyContinue | Stop-Process }
+  'stop' { Get-Process $procName -ErrorAction SilentlyContinue | Stop-Process }
   default { throw "unknown command $cmd" }
 }

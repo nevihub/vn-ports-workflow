@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -19,7 +19,12 @@ const MIGRATED = [
   'scripts/deploy.mjs',
   'scripts/verify.mjs',
   'scripts/check-deploy.mjs',
+  'scripts/native-query.mjs',
+  'scripts/make-pwa-icons.mjs',
 ]
+
+// PowerShell scripts: same naming bar, but syntax is validated with the PS parser (win32) instead of node.
+const MIGRATED_PS1 = ['scripts/native.ps1']
 
 const good = () => ({
   version: 1,
@@ -100,6 +105,17 @@ test('migrated template scripts read game.config.json and parse clean', () => {
   for (const rel of MIGRATED) {
     execFileSync(process.execPath, ['--check', join(TEMPLATES, rel)], { stdio: ['ignore', 'pipe', 'pipe'] })
   }
+  for (const rel of MIGRATED_PS1) {
+    const text = readFileSync(join(TEMPLATES, rel), 'utf8')
+    assert.ok(!/saya/i.test(text), `${rel} still names the Saya game`)
+    assert.ok(text.includes('game.config.json'), `${rel} does not read the per-game config`)
+    if (process.platform === 'win32') {
+      const out = execFileSync('powershell', ['-NoProfile', '-Command',
+        `$errs = $null; $null = [System.Management.Automation.Language.Parser]::ParseFile(${JSON.stringify(join(TEMPLATES, rel))}, [ref]$null, [ref]$errs); $errs.Count`],
+        { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+      assert.equal(out.trim(), '0', `${rel} has PowerShell syntax errors`)
+    }
+  }
 })
 
 test('template derived() builds the names deploy and the cache layer share', () => {
@@ -131,8 +147,12 @@ test('migrated deploy/split scripts run against a fixture game checkout', () => 
   writeFileSync(join(dir, 'game.config.json'), JSON.stringify(cfg))
   const scripts = join(dir, 'scripts')
   cpSync(join(TEMPLATES, 'scripts'), scripts, { recursive: true })
-  const run = (script, args) => execFileSync(process.execPath, [join(scripts, script), ...args],
-    { encoding: 'utf8', cwd: dir, stdio: ['ignore', 'pipe', 'pipe'] })
+  const run = (script, args) => {
+    const r = spawnSync(process.execPath, [join(scripts, script), ...args],
+      { encoding: 'utf8', cwd: dir, stdio: ['ignore', 'pipe', 'pipe'] })
+    if (r.status !== 0) throw Object.assign(new Error(`${script} exited ${r.status}: ${r.stderr}${r.stdout}`), { stdout: r.stdout, stderr: r.stderr })
+    return `${r.stdout}${r.stderr}`
+  }
   assert.match(run('deploy.mjs', ['--dry-run']), /project sengoku-port, branch main/,
     'dry-run plans the configured project, not the old game')
   assert.match(run('check-deploy.mjs', ['--help']), /sengoku\.example\.net/,
@@ -148,4 +168,8 @@ test('migrated deploy/split scripts run against a fixture game checkout', () => 
   assert.match(manifest.version, /^[a-f0-9]{12}$/)
   assert.match(run('deploy.mjs', ['--dry-run', '--prepared']), /Deploy preflight PASS.*project sengoku-port/,
     'the split output passes the same validation a real deploy runs')
+  assert.match(run('native-query.mjs', ['--help']), /game\.config\.json/,
+    'RE tooling usage names the config, not an executable')
+  assert.match(run('make-pwa-icons.mjs', []), /not found at/,
+    'missing executable warns and keeps existing icons instead of failing the build')
 })
