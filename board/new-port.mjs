@@ -100,39 +100,104 @@ process.exit(r.status ?? 1)
 function firewall () {
   return `#!/usr/bin/env node
 // Content firewall (starter): fails when a file git would commit is game content - a forbidden folder, a game file
-// type or an oversized blob. Matched names are printed, contents never. Extend FORBIDDEN_EXT with this engine's
-// archive/script types, and add a story-text shingle check once script strings can be extracted (see Subahibi's
-// scripts/check-firewall.mjs). Self-test: a planted path must be caught before the real check is trusted.
+// type, an oversized blob, or a game binary renamed to an innocent extension. Matched names are printed, contents
+// never. GENERIC_* rules catch every game; ENGINE_* adds this engine's archive/script/data types (ticket E1 fills
+// them in, plus a story-text shingle check once script strings can be extracted - see Subahibi's
+// scripts/check-firewall.mjs). What is inspected is the STAGED git content (what a commit would record), falling
+// back to the worktree only for untracked files; both sizes are checked so staged/worktree skew cannot hide a blob.
+// Self-test: planted fixtures must be caught before the real check is trusted.
+// Known limits: extension/path rules and magic sniffing are heuristics; formats without a magic number (e.g. raw
+// archives) are caught only by path/extension/size. This firewall cannot mathematically prove that no copyrighted
+// content is present - it proves the known game shapes are absent.
 import { execFileSync } from 'node:child_process'
-import { existsSync, statSync } from 'node:fs'
+import { closeSync, existsSync, openSync, readSync, statSync } from 'node:fs'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const FORBIDDEN_DIR = /^(game-data|re|ref|private|public\\/game|dist)\\//
-const FORBIDDEN_EXT = /\\.(exe|dll|ogg|wav|mp3|m4a|aac|opus|jpg|jpeg|png|bmp|webp|avif|gif|tlg|mpg|mpeg|avi|wmv|mp4|webm|ttf|otf|pfs|arc|xp3|npa|dat|pak)$/i
-const MAX_BYTES = 2 * 1024 * 1024
-const bad = file => (FORBIDDEN_DIR.test(file) && 'forbidden-path') || (FORBIDDEN_EXT.test(file) && 'forbidden-extension') || null
+const usage = 'Usage: node scripts/check-firewall.mjs [--help]'
+if (process.argv.slice(2).some(a => a === '--help' || a === '-h')) { console.log(usage); process.exit(0) }
 
-if (bad('re/planted/sample.png') !== 'forbidden-path' || bad('src/a.ogg') !== 'forbidden-extension' || bad('src/a.ts')) {
-  console.error('firewall: FAIL - self-test did not catch the planted fixture')
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+// --- generic rules: every game, every port ---
+const FORBIDDEN_DIR = /^(game-data|re|ref|private|public\\/game|dist)\\//
+const GENERIC_EXT = /\\.(exe|dll|ogg|wav|mp3|m4a|aac|opus|jpg|jpeg|png|bmp|webp|avif|gif|mpg|mpeg|avi|wmv|mp4|webm|ttf|otf|pfs)$/i
+// --- engine rules: ticket E1 replaces these with this engine's archive/script/data extensions ---
+const ENGINE_EXT = /\\.(arc|xp3|npa|dat|pak)$/i
+const ENGINE_DIR = null // e.g. /^(movies|voices)\\// when this engine keeps game blobs outside the generic dirs
+const MAX_BYTES = 2 * 1024 * 1024, SIZE_EXEMPT = new Set(['package-lock.json'])
+// First bytes of common game binaries: catches an exe/audio/image committed as .txt or with no extension.
+const MAGIC = [
+  ['windows-binary', b => b.length >= 2 && b[0] === 0x4D && b[1] === 0x5A],
+  ['ogg-audio', b => b.length >= 4 && b[0] === 0x4F && b[1] === 0x67 && b[2] === 0x67 && b[3] === 0x53],
+  ['png-image', b => b.length >= 4 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47],
+  ['jpeg-image', b => b.length >= 3 && b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF],
+  ['gif-image', b => b.length >= 4 && b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x38],
+  ['webp-image', b => b.length >= 12 && b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50],
+  ['mp4-video', b => b.length >= 8 && b[4] === 0x66 && b[5] === 0x74 && b[6] === 0x79 && b[7] === 0x70],
+]
+const bad = file => (FORBIDDEN_DIR.test(file) && 'forbidden-path') || (ENGINE_DIR && ENGINE_DIR.test(file) && 'forbidden-path') ||
+  (GENERIC_EXT.test(file) && 'forbidden-extension') || (ENGINE_EXT.test(file) && 'forbidden-extension') || null
+const sniff = buf => { for (const [kind, test] of MAGIC) { try { if (test(buf)) return kind } catch {} } return null }
+
+const git = args => {
+  try { return execFileSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: 64 << 20 }) } catch {
+    console.error('firewall: FAIL - git is unavailable, so staged content cannot be inspected (fail closed)')
+    process.exit(1)
+  }
+}
+const gitBytes = args => {
+  try { return execFileSync('git', args, { cwd: root, encoding: 'buffer', maxBuffer: 64 << 20 }) } catch { return null }
+}
+const headBytes = (path, n = 12) => {
+  let fd = -1
+  try {
+    fd = openSync(path, 'r')
+    const buf = Buffer.alloc(n)
+    return buf.slice(0, readSync(fd, buf, 0, n, 0))
+  } catch { return null } finally { if (fd >= 0) try { closeSync(fd) } catch {} }
+}
+
+// Self-test first: the check is trusted only when the planted fixtures are caught and clean code is not.
+const selfTestMagic = Buffer.from([0x4D, 0x5A, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00])
+if (bad('re/planted/sample.png') !== 'forbidden-path' || bad('src/a.ogg') !== 'forbidden-extension' ||
+    bad('src/a.arc') !== 'forbidden-extension' || bad('src/a.ts') || sniff(selfTestMagic) !== 'windows-binary' ||
+    sniff(Buffer.from('export const x = 1;\\n')) !== null) {
+  console.error('firewall: FAIL - self-test did not catch the planted fixture (check not trusted)')
   process.exit(1)
 }
-const git = args => execFileSync('git', args, { cwd: root, encoding: 'utf8' })
-const list = [...new Set([...git(['ls-files', '-z', '--cached']).split('\\0'), ...git(['ls-files', '-z', '--others', '--exclude-standard']).split('\\0')].filter(Boolean))]
+
+const tracked = new Set(git(['ls-files', '-z', '--cached']).split('\\0').filter(Boolean))
+const untracked = new Set(git(['ls-files', '-z', '--others', '--exclude-standard']).split('\\0').filter(Boolean))
+const list = [...new Set([...tracked, ...untracked])].sort()
 const violations = []
 for (const file of list) {
   const rule = bad(file)
   if (rule) violations.push({ file, rule })
-  const p = join(root, file)
-  if (file !== 'package-lock.json' && existsSync(p) && statSync(p).size > MAX_BYTES) violations.push({ file, rule: 'oversized' })
+  // Sizes: the staged blob is what a commit would record; the worktree is what the next add would stage.
+  if (!SIZE_EXEMPT.has(file)) {
+    if (tracked.has(file)) {
+      const out = git(['cat-file', '-s', ':0:' + file]).trim()
+      if (/^\\d+$/.test(out) && Number(out) > MAX_BYTES) violations.push({ file, rule: 'oversized-staged' })
+    }
+    const p = join(root, file)
+    if (untracked.has(file) || existsSync(p)) {
+      try { if (statSync(p).size > MAX_BYTES) violations.push({ file, rule: tracked.has(file) ? 'oversized-worktree' : 'oversized' }) } catch {}
+    }
+  }
+  // Magic: staged bytes for tracked files, worktree bytes for untracked ones.
+  const staged = tracked.has(file) ? gitBytes(['cat-file', 'blob', ':0:' + file]) : null
+  const bytes = staged ? staged.slice(0, 12) : headBytes(join(root, file))
+  if (bytes && bytes.length >= 3) {
+    const kind = sniff(bytes)
+    if (kind) violations.push({ file, rule: 'renamed-' + kind })
+  }
 }
 if (violations.length) {
   for (const v of violations) console.error(\`firewall: \${v.rule}: \${v.file}\`)
   console.error(\`firewall: FAIL - \${violations.length} of \${list.length} files\`)
   process.exit(1)
 }
-console.log(\`firewall: PASS - \${list.length} files checked (self-test caught the planted fixture)\`)
+console.log(\`firewall: PASS - \${list.length} files checked (self-test caught the planted fixture; story-text check UNAVAILABLE - no extraction corpus yet, ticket E1)\`)
 `
 }
 

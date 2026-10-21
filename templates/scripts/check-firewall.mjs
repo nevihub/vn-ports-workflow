@@ -2,6 +2,10 @@
 // Checks tracked + staged + untracked-not-ignored files for forbidden paths/extensions, oversized blobs and
 // story text. The text check derives its forbidden set from the local <PRE> blocks (8-token shingles) and
 // proves itself on an in-memory planted fixture before it is trusted. Matched text is never printed.
+// Sizes and story-text bytes come from the STAGED blob for tracked files (what a commit would record)
+// and from the worktree for untracked ones, so staged/worktree skew cannot hide a blob.
+// Known limit: heuristics plus corpus shingles cannot mathematically prove that no copyrighted
+// content is present; they prove the known game shapes are absent.
 import { execFileSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
@@ -16,6 +20,16 @@ const MAX_BYTES = 2 * 1024 * 1024, SIZE_EXEMPT = new Set(['package-lock.json'])
 const K = 8
 
 const git = args => execFileSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: 64 << 20 })
+const tracked = new Set(git(['ls-files', '-z', '--cached']).split('\0').filter(Boolean))
+const stagedBytes = file => {
+  try { return execFileSync('git', ['cat-file', 'blob', ':0:' + file], { cwd: root, encoding: 'buffer', maxBuffer: 256 << 20 }) } catch { return null }
+}
+const stagedSize = file => {
+  try {
+    const n = Number(execFileSync('git', ['cat-file', '-s', ':0:' + file], { cwd: root, encoding: 'utf8' }).trim())
+    return Number.isFinite(n) ? n : null
+  } catch { return null }
+}
 const files = [...new Set([...git(['ls-files', '-z', '--cached']).split('\0'),
   ...git(['ls-files', '-z', '--others', '--exclude-standard']).split('\0')].filter(Boolean))].sort()
 
@@ -62,7 +76,14 @@ for (const file of files) {
   if (FORBIDDEN_DIR.test(file)) violations.push({ file, rule: 'forbidden-path' })
   if (FORBIDDEN_EXT.test(file)) violations.push({ file, rule: 'forbidden-extension' })
   const path = join(root, file)
-  if (existsSync(path) && !SIZE_EXEMPT.has(file) && statSync(path).size > MAX_BYTES) violations.push({ file, rule: 'oversized' })
+  // Staged content is what a commit would record; the worktree is what the next add would stage. Check both.
+  if (!SIZE_EXEMPT.has(file) && tracked.has(file)) {
+    const s = stagedSize(file)
+    if (s !== null && s > MAX_BYTES) violations.push({ file, rule: 'oversized-staged' })
+  }
+  if (existsSync(path) && !SIZE_EXEMPT.has(file) && statSync(path).size > MAX_BYTES) {
+    violations.push({ file, rule: tracked.has(file) ? 'oversized-worktree' : 'oversized' })
+  }
 }
 
 const story = loadStoryText()
@@ -80,9 +101,11 @@ if (story) {
     selfTest: caught && clean && covered ? 'pass' : 'fail', filesScanned: 0,
     blindTo: 'choice, menu and other strings outside <PRE> story blocks' }
   if (fingerprint.selfTest === 'pass') for (const file of files) {
+    if (FORBIDDEN_EXT.test(file)) continue // game types are refused by the extension rule, never text-scanned
     const path = join(root, file)
-    if (!existsSync(path) || FORBIDDEN_EXT.test(file) || statSync(path).size > MAX_BYTES * 4) continue
-    const buf = readFileSync(path)
+    // Prefer the staged blob for tracked files: it is exactly what a commit would record.
+    const buf = tracked.has(file) ? stagedBytes(file) : (existsSync(path) ? readFileSync(path) : null)
+    if (!buf || buf.length > MAX_BYTES * 4) continue
     if (buf.includes(0)) continue // binary; covered by the extension and size rules
     fingerprint.filesScanned++
     const lines = scanText(buf.toString('utf8'), forbidden)
