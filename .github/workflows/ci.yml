@@ -1,0 +1,24 @@
+name: ci
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    # Linux only: the workflow must never need Windows-only or paid tooling, game data, or secrets.
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ['20', '22']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm test
+      - name: syntax sweep (every board + template script must parse)
+        run: |
+          for f in board/*.mjs board/lib/*.mjs templates/scripts/*.mjs; do
+            node --check "$f" || exit 1
+          done
+      - name: scaffold smoke + synthetic-fixture journey
+        run: node --test board/tests/new-port.test.mjs board/tests/proof-freshness.test.mjs board/tests/template-hygiene.test.mjs board/tests/firewall-gates.test.mjs
