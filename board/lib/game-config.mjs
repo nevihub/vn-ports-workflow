@@ -37,6 +37,10 @@ export function validateGameConfig (cfg, { strict = false } = {}) {
   if (!Array.isArray(content.archiveNames) || !content.archiveNames.length || !content.archiveNames.every(n => /^[a-z0-9_-]{1,40}$/i.test(str(n) ?? ''))) {
     (strict ? errors : warnings).push('content.archiveNames: expected archives without extension, e.g. ["cg", "sound"] (ticket R1 fills this in)')
   }
+  if (content.archiveMagic !== undefined && content.archiveMagic !== null &&
+      !(typeof content.archiveMagic === 'string' && /^[0-9a-fA-F]{4,64}$/.test(content.archiveMagic))) {
+    errors.push('content.archiveMagic: even-length hex of the archive header, or null when the engine has none')
+  }
   if (!Array.isArray(content.scriptExtensions) || !content.scriptExtensions.every(e => EXT_RE.test(str(e)?.replace(/^\./, '') ?? ''))) {
     errors.push('content.scriptExtensions must be a list (possibly empty) like ["nss"]')
   }
@@ -44,12 +48,27 @@ export function validateGameConfig (cfg, { strict = false } = {}) {
   if (count !== null && count !== undefined && (!Number.isSafeInteger(count) || count < 1)) {
     errors.push('content.expectedScriptCount must be a positive integer or null (unknown until S1)')
   }
+  const qa = cfg.qa ?? {}
+  if (cfg.qa !== undefined && cfg.qa !== null && (typeof cfg.qa !== 'object' || Array.isArray(cfg.qa))) {
+    errors.push('qa must be an object or absent (optional title-screen assertions)')
+  } else {
+    if (qa.titleChoices !== undefined && qa.titleChoices !== null && (!Number.isSafeInteger(qa.titleChoices) || qa.titleChoices < 1)) {
+      errors.push('qa.titleChoices must be a positive integer or null (unknown until the title boots)')
+    }
+    if (qa.titleRoutine !== undefined && qa.titleRoutine !== null && (!str(qa.titleRoutine)?.trim() || isPlaceholder(qa.titleRoutine))) {
+      (strict ? errors : warnings).push('qa.titleRoutine is a placeholder: the title-screen routine name once the title boots')
+    }
+  }
   const build = cfg.build ?? {}
   if (!Number.isSafeInteger(build.devPort) || build.devPort < 1024 || build.devPort > 65535) {
     errors.push('build.devPort must be a port number 1024-65535')
   }
   if (!Number.isSafeInteger(build.partSizeBytes) || build.partSizeBytes < 65536) {
     errors.push('build.partSizeBytes must be an integer >= 65536')
+  }
+  for (const [key, label] of [['renderWidth', 'build.renderWidth'], ['renderHeight', 'build.renderHeight']]) {
+    const v = build[key]
+    if (v !== undefined && v !== null && (!Number.isSafeInteger(v) || v < 1)) errors.push(`${label} must be a positive integer or absent`)
   }
   const deploy = cfg.deploy ?? {}
   if (strict) {

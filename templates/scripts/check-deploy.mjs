@@ -3,11 +3,23 @@ import { createRequire } from 'node:module'
 import { mkdir, readFile, rm } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { checkpoint, findCachedPackage, root, writeProof } from './lib/automation.mjs'
+import { derived, requireGameConfig } from './lib/game-config.mjs'
 
-const DEFAULT_ORIGIN = 'https://<game>.example.com/'
+// Live-smoke gate (production): archive names, domain, project and part size come from game.config.json
+// (tickets R1/U1) and placeholders refuse to run. Title-screen assertions (choices, routine, canvas, script
+// count) apply only once the config knows them — until then they are recorded as skipped, never passed.
+const game = derived(requireGameConfig(root, { production: true }))
+const { id: GAME_ID, ext: ARCH_EXT, archives: ARCHIVES, partSize: PART_SIZE, domain: CONFIG_DOMAIN,
+  cacheName: GAME_CACHE, renderWidth: RENDER_W, renderHeight: RENDER_H,
+  expectedScriptCount: EXPECTED_SCRIPTS, titleChoices: TITLE_CHOICES, titleRoutine: TITLE_ROUTINE,
+  archiveMagic: ARCHIVE_MAGIC } = game
+const archiveAlternation = ARCHIVES.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')
+const blockSuffix = `.${ARCH_EXT}`
+const blockFile = (name, index) => `${name}${blockSuffix}.${index}`
+const magicBytes = ARCHIVE_MAGIC ? Buffer.from(ARCHIVE_MAGIC, 'hex') : null
+const hasMagic = bytes => !magicBytes || (bytes.length >= magicBytes.length && magicBytes.every((b, i) => bytes[i] === b))
+
 const SAFE_FAILURE = /^[A-Za-z0-9_.:-]{1,100}$/
-const ARCHIVES = ['cg', 'nss', 'sound', 'system', 'voice']
-const PART_SIZE = 1024 * 1024
 const MAX_DECLARED_GAME_BYTES = 1024 * 1024 * 1024
 const FULL_CACHE_TIMEOUT_MS = 300000
 
@@ -15,7 +27,7 @@ function usage() {
   return `Usage: node scripts/check-deploy.mjs [options]
 
 Options:
-  --origin URL       Site to check (default: ${DEFAULT_ORIGIN})
+  --origin URL       Site to check (default: ${CONFIG_DOMAIN ?? '(required: game.config.json deploy.domain is a placeholder)'})
   --deployment URL   Also check this deployment URL
   --dist PATH        Compare against a local split build directory (default: dist)
   --browser          Run the headless Playwright boot and reload check
@@ -28,7 +40,7 @@ re/verification/deploy-smoke.json. Browser checks reuse an ignored profile under
 }
 
 function parseArgs(args) {
-  const options = { origin: DEFAULT_ORIGIN, deployment: null, dist: null, browser: false, fullCache: false, fresh: false }
+  const options = { origin: CONFIG_DOMAIN, deployment: null, dist: null, browser: false, fullCache: false, fresh: false }
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]
     if (arg === '--help' || arg === '-h') return { help: true }
@@ -43,6 +55,7 @@ function parseArgs(args) {
       if (arg === '--dist') options.dist = value
     } else throw new Error(`Unknown option: ${arg}`)
   }
+  if (!options.origin) throw new Error('No origin: pass --origin or set game.config.json deploy.domain (ticket U1)')
   if (options.fresh && !options.browser) throw new Error('--fresh requires --browser')
   if (options.fullCache && !options.browser) throw new Error('--full-cache requires --browser')
   return options
@@ -196,7 +209,7 @@ async function runHttp(base, localDist) {
   let block = null
   if (validSplit) {
     const archive = ARCHIVES[0]
-    const blockUrl = route(base, `game/${archive}.npa.0`)
+    const blockUrl = route(base, `game/${blockFile(archive, 0)}`)
     blockUrl.searchParams.set('v', parts.version)
     const blockResponse = await request(blockUrl)
     const expectedBytes = Math.min(parts.partSize, parts.sizes[archive])
@@ -208,33 +221,33 @@ async function runHttp(base, localDist) {
     if (safeBlock) {
       block = bytes
       checks.firstArchiveBlock = { status: 200, durationMs: blockResponse.result.durationMs, bytes: bytes.byteLength,
-        sha256: createHash('sha256').update(bytes).digest('hex'), npaHeader: bytes.length >= 4 && bytes[0] === 0x4e && bytes[1] === 0x50 && bytes[2] === 0x41 && bytes[3] === 1,
+        sha256: createHash('sha256').update(bytes).digest('hex'), magicMatch: hasMagic(bytes),
         expectedBytes, advertisedBytes: loaded.advertisedBytes, wwwAuthenticate: false }
-      checks.firstArchiveBlock.ok = checks.firstArchiveBlock.npaHeader && bytes.byteLength === expectedBytes
+      checks.firstArchiveBlock.ok = checks.firstArchiveBlock.magicMatch && bytes.byteLength === expectedBytes
     } else {
-      checks.firstArchiveBlock = { ...blockResponse.result, ok: false, npaHeader: false, expectedBytes,
+      checks.firstArchiveBlock = { ...blockResponse.result, ok: false, magicMatch: false, expectedBytes,
         advertisedBytes: loaded.advertisedBytes, tooLarge: loaded.tooLarge }
     }
     noteChallenge('firstArchiveBlock', blockResponse.result)
   } else if (!partsLooksSplit && unsplitPreview) {
-    const wholeUrl = route(base, 'game/cg.npa')
+    const wholeUrl = route(base, `game/${ARCHIVES[0]}${blockSuffix}`)
     const result = await request(wholeUrl, { headers: { Range: 'bytes=0-63' } })
     if (result.response?.status === 206 && !result.result.wwwAuthenticate) {
       const loaded = await readBounded(result.response, 64)
       const bytes = loaded.bytes
       if (loaded.tooLarge || !bytes) {
         checks.firstArchiveBlock = { status: 206, durationMs: result.result.durationMs, bytes: null,
-          expectedBytes: 64, tooLarge: true, ok: false, npaHeader: false }
+          expectedBytes: 64, tooLarge: true, ok: false, magicMatch: false }
       } else {
         block = bytes
         checks.firstArchiveBlock = { status: 206, durationMs: result.result.durationMs, bytes: bytes.byteLength,
-          sha256: createHash('sha256').update(bytes).digest('hex'), npaHeader: bytes.length >= 4 && bytes[0] === 0x4e && bytes[1] === 0x50 && bytes[2] === 0x41 && bytes[3] === 1, expectedBytes: 64,
+          sha256: createHash('sha256').update(bytes).digest('hex'), magicMatch: hasMagic(bytes), expectedBytes: 64,
           advertisedBytes: loaded.advertisedBytes, wwwAuthenticate: false }
-        checks.firstArchiveBlock.ok = checks.firstArchiveBlock.npaHeader && bytes.byteLength === 64
+        checks.firstArchiveBlock.ok = checks.firstArchiveBlock.magicMatch && bytes.byteLength === 64
       }
     } else {
       await result.response?.body?.cancel()
-      checks.firstArchiveBlock = { ...result.result, ok: false, rangeSupported: result.response?.status === 206, npaHeader: false }
+      checks.firstArchiveBlock = { ...result.result, ok: false, rangeSupported: result.response?.status === 206, magicMatch: false }
     }
     noteChallenge('firstArchiveBlock', result.result)
   } else {
@@ -255,7 +268,7 @@ async function compareDist(distPath, remoteParts, remoteBlock) {
     if (!validParts(localParts)) return { ok: false, failure: { name: 'Error', category: 'InvalidLocalPartsManifest' } }
     const sameManifest = remoteParts && JSON.stringify(localParts) === JSON.stringify(remoteParts)
     const archive = Object.keys(localParts.sizes).sort()[0]
-    const localBlock = await readFile(join(gameDir, `${archive}.npa.0`))
+    const localBlock = await readFile(join(gameDir, blockFile(archive, 0)))
     const localSha256 = createHash('sha256').update(localBlock).digest('hex')
     const remoteSha256 = remoteBlock ? createHash('sha256').update(remoteBlock).digest('hex') : null
     return { ok: !!sameManifest && !!remoteSha256 && localSha256 === remoteSha256,
@@ -320,14 +333,18 @@ async function runBrowser(base, parts, fullCache, fresh) {
       phase = `${label}:unlock`
       await canvas.click({ position: { x: 12, y: 12 }, timeout: 10000 })
       phase = `${label}:title`
-      await page.waitForFunction(() => {
+      await page.waitForFunction(({ routine, choices }) => {
         const game = window.game
-        if (!game?.vm) return false
-        const names = []
-        for (const frame of (game.vm.main?.frames ?? [])) names.push(frame.r?.name ?? '')
-        for (const thread of (game.vm.threads ?? [])) for (const frame of (thread.frames ?? [])) names.push(frame.routine?.name ?? frame.r?.name ?? '')
-        return names.includes('TitleSelect') && typeof game.choices === 'function' && game.choices().length === 4
-      }, {}, { polling: 250, timeout: 120000 })
+        if (!game?.vm || typeof game.choices !== 'function') return false
+        if (routine !== null) {
+          const names = []
+          for (const frame of (game.vm.main?.frames ?? [])) names.push(frame.r?.name ?? '')
+          for (const thread of (game.vm.threads ?? [])) for (const frame of (thread.frames ?? [])) names.push(frame.routine?.name ?? frame.r?.name ?? '')
+          if (!names.includes(routine)) return false
+        }
+        const n = game.choices().length
+        return choices === null ? n >= 1 : n === choices
+      }, { routine: TITLE_ROUTINE, choices: TITLE_CHOICES }, { polling: 250, timeout: 120000 })
       if (fullCache) {
         phase = `${label}:full-cache`
         const waitStarted = Date.now()
@@ -335,15 +352,15 @@ async function runBrowser(base, parts, fullCache, fresh) {
           let previousDone = 0
           fullCacheStatus = { status: 'waiting', done: 0, total: expected, reason: 'cache-not-created' }
           while (Date.now() < deadline) {
-            const observed = await page.evaluate(async expectedCounts => {
+            const observed = await page.evaluate(async ({ expectedCounts, cacheName, ext }) => {
               const cacheNames = await caches.keys()
-              if (!cacheNames.includes('saya-game-v1')) return { done: 0, total: Object.values(expectedCounts).reduce((sum, count) => sum + count, 0), complete: false, reason: 'cache-not-created' }
-              const cache = await caches.open('saya-game-v1')
+              if (!cacheNames.includes(cacheName)) return { done: 0, total: Object.values(expectedCounts).reduce((sum, count) => sum + count, 0), complete: false, reason: 'cache-not-created' }
+              const cache = await caches.open(cacheName)
               const cached = Object.fromEntries(Object.keys(expectedCounts).map(name => [name, new Set()]))
               for (const request of await cache.keys()) {
                 const filename = new URL(request.url).pathname.split('/').pop() ?? ''
                 for (const name of Object.keys(expectedCounts)) {
-                  const prefix = `${name}.npa.`
+                  const prefix = `${name}.${ext}.`
                   if (!filename.startsWith(prefix)) continue
                   const suffix = filename.slice(prefix.length)
                   if (/^\d+$/.test(suffix)) {
@@ -358,7 +375,7 @@ async function runBrowser(base, parts, fullCache, fresh) {
               const total = Object.values(expectedCounts).reduce((sum, count) => sum + count, 0)
               const complete = done === total && Object.entries(expectedCounts).every(([name, count]) => cached[name].size === count)
               return { done, total, complete, byArchive, reason: complete ? 'all-expected-blocks-present' : 'missing-blocks' }
-            }, expectedByArchive)
+            }, { expectedCounts: expectedByArchive, cacheName: GAME_CACHE, ext: ARCH_EXT })
             const elapsed = Date.now() - waitStarted
             const status = observed.complete ? 'complete' : observed.done > previousDone ? 'caching' : observed.done > 0 ? 'partial' : 'waiting'
             fullCacheStatus = { status, done: observed.done, total: observed.total, byArchive: observed.byArchive ?? null, reason: observed.reason }
@@ -369,19 +386,21 @@ async function runBrowser(base, parts, fullCache, fresh) {
         fullCacheWaitMs = Date.now() - waitStarted
       }
       phase = `${label}:state`
-      const state = await page.evaluate(async ({ initial, expectedCount, expectedCounts }) => {
+      const state = await page.evaluate(async ({ initial, expectedCount, expectedCounts, cacheName, blockPattern, routine }) => {
         const game = window.game
         const canvas = document.querySelector('canvas')
         let gl = null
         try { gl = canvas?.getContext('webgl2') } catch {}
         const cacheNames = await caches.keys()
-        const cache = cacheNames.includes('saya-game-v1') ? await caches.open('saya-game-v1') : null
-        const cachedBlocksByArchive = { cg: 0, nss: 0, sound: 0, system: 0, voice: 0 }
-        const cachedIndexesByArchive = { cg: new Set(), nss: new Set(), sound: new Set(), system: new Set(), voice: new Set() }
+        const cache = cacheNames.includes(cacheName) ? await caches.open(cacheName) : null
+        const names = Object.keys(expectedCounts ?? {})
+        const cachedBlocksByArchive = Object.fromEntries(names.map(name => [name, 0]))
+        const cachedIndexesByArchive = Object.fromEntries(names.map(name => [name, new Set()]))
+        const blockRe = new RegExp(blockPattern, 'i')
         if (cache) for (const request of await cache.keys()) {
-          const match = /\/game\/(cg|nss|sound|system|voice)\.npa\.(\d+)$/i.exec(new URL(request.url).pathname)
+          const match = blockRe.exec(new URL(request.url).pathname)
           const name = match?.[1]?.toLowerCase(), index = Number(match?.[2])
-          if (name) { cachedBlocksByArchive[name]++; cachedIndexesByArchive[name].add(index) }
+          if (name && name in cachedBlocksByArchive) { cachedBlocksByArchive[name]++; cachedIndexesByArchive[name].add(index) }
         }
         const cachedBlockCount = Object.values(cachedBlocksByArchive).reduce((sum, count) => sum + count, 0)
         const complete = expectedCounts === null ? null : Object.entries(expectedCounts).every(([name, count]) => {
@@ -389,14 +408,17 @@ async function runBrowser(base, parts, fullCache, fresh) {
           return true
         })
         const frames = (game.vm.main?.frames ?? []).map(frame => frame.r?.name ?? '')
-        const titleSelect = frames.includes('TitleSelect') || (game.vm.threads ?? []).some(thread => (thread.frames ?? []).some(frame => frame.routine?.name === 'TitleSelect'))
+        const titleSelect = routine === null ? null : (frames.includes(routine) ||
+          (game.vm.threads ?? []).some(thread => (thread.frames ?? []).some(frame => frame.routine?.name === routine)))
         return { initial, titleSelect, choiceCount: game.choices().length, scriptCount: game.scripts.size,
           webgl2: !!gl, canvas: canvas ? [canvas.width, canvas.height] : null,
-          gameCache: { name: 'saya-game-v1', present: !!cache, cachedBlockCount, cachedBlocksByArchive,
+          gameCache: { name: cacheName, present: !!cache, cachedBlockCount, cachedBlocksByArchive,
             expectedBlockCount: expectedCount, expectedBlocksByArchive: expectedCounts, complete },
           gameCachePresent: !!cache, unknownBuiltins: game.vm.unknownBuiltins?.size ?? game.vm.unknownBuiltins?.length ?? null,
           urlHasFragment: !!new URL(location.href).hash }
-      }, { initial: { status: initialStatus, urlHasFragment: initialUrlHasFragment }, expectedCount: expected, expectedCounts: expectedByArchive })
+      }, { initial: { status: initialStatus, urlHasFragment: initialUrlHasFragment }, expectedCount: expected, expectedCounts: expectedByArchive,
+        cacheName: GAME_CACHE, blockPattern: `/game/(${archiveAlternation})\\.${ARCH_EXT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.(\\d+)$`,
+        routine: TITLE_ROUTINE })
       state.fullCacheWaitMs = fullCacheWaitMs
       state.fullCacheStatus = fullCacheStatus
       return state
@@ -407,15 +429,25 @@ async function runBrowser(base, parts, fullCache, fresh) {
     phase = 'cookies'
     const cookies = await context.cookies(base.href)
     const authCookiesPresent = cookies.some(cookie => /auth|session|password|access/i.test(cookie.name))
-    const stateOk = state => state.initial.status === 200 && !state.initial.urlHasFragment && state.titleSelect &&
-      state.choiceCount === 4 && state.scriptCount === 82 && state.webgl2 &&
-      JSON.stringify(state.canvas) === JSON.stringify([800, 600]) && state.unknownBuiltins === 0 && !state.urlHasFragment
+    // Assertions the config cannot make yet (null until the title boots) are recorded as skipped,
+    // never passed: the proof says exactly what this run did not check.
+    const skippedAssertions = [
+      ...(TITLE_ROUTINE === null ? ['titleRoutine'] : []),
+      ...(TITLE_CHOICES === null ? ['titleChoices'] : []),
+      ...(EXPECTED_SCRIPTS === null ? ['scriptCount'] : []),
+      ...((RENDER_W === null || RENDER_H === null) ? ['canvasSize'] : []),
+    ]
+    const stateOk = state => state.initial.status === 200 && !state.initial.urlHasFragment && state.titleSelect !== false &&
+      (TITLE_CHOICES === null ? state.choiceCount >= 1 : state.choiceCount === TITLE_CHOICES) &&
+      (EXPECTED_SCRIPTS === null ? state.scriptCount >= 1 : state.scriptCount === EXPECTED_SCRIPTS) && state.webgl2 &&
+      ((RENDER_W === null || RENDER_H === null) ? state.canvas !== null : JSON.stringify(state.canvas) === JSON.stringify([RENDER_W, RENDER_H])) &&
+      state.unknownBuiltins === 0 && !state.urlHasFragment
     const optionalAnalytics = failedResources.filter(resource => resource.host === 'static.cloudflareinsights.com' &&
       /^\/beacon\.min\.js(?:\/|$)/.test(resource.path))
     const requiredFailures = failedResources.filter(resource => !optionalAnalytics.includes(resource))
     result = { ok: stateOk(first) && stateOk(reload) && (!fullCache || (first.gameCache.complete && reload.gameCache.complete)) &&
         exceptions.length === 0 && requiredFailures.length === 0 && challengePaths.length === 0 && !authCookiesPresent,
-      channel, fullCacheRequested: fullCache, fullCacheTimeoutMs: fullCache ? FULL_CACHE_TIMEOUT_MS : null, first, reload,
+      channel, skippedAssertions, fullCacheRequested: fullCache, fullCacheTimeoutMs: fullCache ? FULL_CACHE_TIMEOUT_MS : null, first, reload,
       expectedCachedBlocks: expected, gameCacheStates: [first.gameCache, reload.gameCache], pageExceptionCount: exceptions.length,
       pageExceptionNames: [...new Set(exceptions)].slice(0, 8), consoleCounts,
       failedResourceCount: failedResources.length, failedResources: failedResources.slice(0, 12),
@@ -449,7 +481,7 @@ function printSummary(proof, proofPath) {
     ...(browser ? { browser: { ok: browser.ok, phase: browser.phase ?? null, failure: browser.failure ?? null,
       scripts: browser.first?.scriptCount ?? null, titleChoices: browser.first?.choiceCount ?? null,
       cachedBlocks: browser.reload?.gameCache.cachedBlockCount ?? null, expectedBlocks: browser.expectedCachedBlocks,
-      fullCache: browser.reload?.gameCache.complete ?? null,
+      fullCache: browser.reload?.gameCache.complete ?? null, skippedAssertions: browser.skippedAssertions ?? null,
       pageExceptions: browser.pageExceptionCount, failedResources: browser.failedResourceCount,
       requiredFailedResources: browser.requiredFailedResourceCount ?? browser.failedResourceCount,
       optionalAnalyticsFailures: browser.optionalAnalyticsFailureCount ?? 0 } } : {}),

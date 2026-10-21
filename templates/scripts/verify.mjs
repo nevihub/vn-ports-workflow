@@ -2,6 +2,12 @@ import { existsSync } from 'node:fs'
 import { rm, readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { checkpoint, localCli, root, runLogged, writeProof } from './lib/automation.mjs'
+import { derived, requireGameConfig } from './lib/game-config.mjs'
+
+// Dev-loop check (warnings ok, errors refuse): the expected script count comes from game.config.json
+// content.expectedScriptCount (null until S1 counts the scripts — the parse still runs, only the count
+// assertion is skipped). The script folder is game-data/<first script extension>.
+const { expectedScriptCount, scriptExt } = derived(requireGameConfig(root))
 
 const usage = `Usage: node scripts/verify.mjs [--build] [--help]
 
@@ -13,7 +19,8 @@ if (args.has('--help') || args.has('-h')) { console.log(usage); process.exit(0) 
 for (const arg of args) if (arg !== '--build') { console.error(`Unknown option: ${arg}\n\n${usage}`); process.exit(2) }
 
 const proofFile = 're/verification/verify.json'
-const hasScriptData = existsSync(resolve(root, 'game-data/nss'))
+const scriptTarget = expectedScriptCount === null ? 'unasserted' : String(expectedScriptCount)
+const hasScriptData = scriptExt ? existsSync(resolve(root, 'game-data', scriptExt)) : existsSync(resolve(root, 'game-data'))
 const steps = []
 const testReport = resolve(root, 're/verification/vitest.json')
 let testReportCleared = false
@@ -40,8 +47,12 @@ try {
     const output = await readFile(logPath, 'utf8')
     const match = output.match(/(?:^|\n)(\d+) parsed\s*$/)
     check.parsed = match ? Number(match[1]) : null
-    check.ok = check.ok && check.parsed === 82
-    if (!check.ok && check.exitCode === 0 && check.parsed !== 82) check.error = 'SCRIPT_COUNT_MISMATCH'
+    if (expectedScriptCount === null) {
+      check.note = 'count unasserted: game.config.json content.expectedScriptCount is null until S1'
+    } else {
+      check.ok = check.ok && check.parsed === expectedScriptCount
+      if (!check.ok && check.exitCode === 0 && check.parsed !== expectedScriptCount) check.error = 'SCRIPT_COUNT_MISMATCH'
+    }
   } else {
     steps.push({ id: 'verify-scripts', exitCode: null, error: 'MISSING_GAME_SCRIPT_DATA', durationMs: 0, log: null, ok: false, parsed: null })
   }
@@ -84,8 +95,8 @@ if (executedTestStep && !testCounts) { executedTestStep.ok = false; executedTest
 
 const ok = !setupError && steps.length > 0 && steps.every(step => step.ok)
 const proof = { createdAt: new Date().toISOString(), checkpoint: checkpoint(), mode: args.has('--build') ? 'build' : 'verify',
-  scriptDataPresent: hasScriptData, scriptCount: steps.find(step => step.id === 'verify-scripts')?.parsed ?? null,
-  testCounts, setupError, steps: steps.map(({ id, ok, exitCode, error, durationMs, log, parsed }) => ({ id, ok, exitCode, error, durationMs, log, ...(parsed === undefined ? {} : { parsed }) })), ok }
+  scriptDataPresent: hasScriptData, scriptCount: steps.find(step => step.id === 'verify-scripts')?.parsed ?? null, scriptTarget: expectedScriptCount,
+  testCounts, setupError, steps: steps.map(({ id, ok, exitCode, error, durationMs, log, parsed, note }) => ({ id, ok, exitCode, error, durationMs, log, ...(parsed === undefined ? {} : { parsed }), ...(note === undefined ? {} : { note }) })), ok }
 try { await writeProof(proofFile, proof) } catch { console.error('Could not write verification proof under re/.'); process.exit(1) }
-console.log(`Verify ${ok ? 'PASS' : 'FAIL'} | scripts ${proof.scriptCount ?? 'unavailable'}/82 | tests ${testCounts ? `${testCounts.passed ?? '?'} passed, ${testCounts.failed ?? '?'} failed, ${testCounts.skipped ?? '?'} skipped` : 'unavailable'} | ${steps.map(step => `${step.id} ${step.ok ? 'ok' : 'failed'} ${step.durationMs}ms`).join(' | ')} | proof ${proofFile}`)
+console.log(`Verify ${ok ? 'PASS' : 'FAIL'} | scripts ${proof.scriptCount ?? 'unavailable'}/${scriptTarget ?? 'unasserted'} | tests ${testCounts ? `${testCounts.passed ?? '?'} passed, ${testCounts.failed ?? '?'} failed, ${testCounts.skipped ?? '?'} skipped` : 'unavailable'} | ${steps.map(step => `${step.id} ${step.ok ? 'ok' : 'failed'} ${step.durationMs}ms`).join(' | ')} | proof ${proofFile}`)
 if (!ok) process.exit(1)
