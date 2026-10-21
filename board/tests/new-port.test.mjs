@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { audit } from '../lib/audit.mjs'
+import { validateGameConfig } from '../lib/game-config.mjs'
 import { parse } from '../lib/ledger.mjs'
 import { scaffold } from '../new-port.mjs'
 
@@ -28,6 +29,11 @@ test('new-port scaffolds a firewall-first repo whose ledger is clean and whose l
   assert.match(execFileSync('git', ['log', '--oneline'], { cwd: target, encoding: 'utf8' }), /New port: Test Game/)
   const cfg = JSON.parse(readFileSync(projectsFile, 'utf8'))
   assert.ok(cfg.projects.some(p => p.id === 'testgame' && p.aliases.includes('tg')))
+  const gameConfig = JSON.parse(readFileSync(join(target, 'game.config.json'), 'utf8'))
+  assert.equal(gameConfig.game.id, 'testgame', 'the config carries the game id')
+  assert.deepEqual(gameConfig.content.archiveExtensions, ['xp3'], 'the KiriKiri engine guess bakes xp3 into the config')
+  assert.deepEqual(validateGameConfig(gameConfig).errors, [], 'a fresh scaffold config passes plain validation')
+  assert.match(readFileSync(join(target, 'scripts', 'doctor.mjs'), 'utf8'), /doctor\.mjs/, 'a doctor wrapper is scaffolded')
   const agents = readFileSync(agentsFile, 'utf8')
   assert.ok(agents.indexOf('Test Game, tg') < agents.indexOf('a game not listed'), 'router row lands above the fallback row')
   assert.throws(() => scaffold({ base, id: 'testgame', full: 'Test Game', projectsFile, agentsFile }), /already/)

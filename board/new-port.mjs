@@ -13,6 +13,37 @@ import { PROJECTS_FILE } from './lib/projects.mjs'
 
 const today = () => new Intl.DateTimeFormat('sv-SE').format(new Date())
 
+// Conventional container/script extensions per engine. The scaffold bakes these into the starter firewall
+// and game.config.json; ticket R1 verifies them against the owned install and narrows the list.
+const ENGINE_CONTENT = {
+  n2system: { archives: ['npa'], scripts: ['nss'] },
+  bgi: { archives: ['arc'], scripts: [] },
+  ethornell: { archives: ['arc'], scripts: [] },
+  kirikiri: { archives: ['xp3'], scripts: [] },
+  renpy: { archives: ['rpa'], scripts: [] },
+}
+const engineKey = engine => String(engine ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
+const engineContent = engine => ENGINE_CONTENT[engineKey(engine)] ?? { archives: ['arc', 'xp3', 'npa', 'dat', 'pak'], scripts: [] }
+
+function gameConfig ({ id, full, engine }) {
+  const eng = engine && engine !== '?' ? engine : 'unknown yet'
+  const content = engineContent(engine)
+  return {
+    version: 1,
+    game: { id, title: full, edition: 'unknown yet (ticket U1)', engine: eng },
+    runtime: { strategy: 'unknown', openRuntime: null, license: null,
+      note: 'Ticket R2 picks wasm (open runtime compiled) or vm (own TypeScript VM) or convert (offline IR); record the choice and its evidence in docs/DECISIONS.md.' },
+    content: { archiveExtensions: content.archives, archiveNames: [],
+      noteArchiveNames: 'Ticket R1 lists the expected archives without extension, e.g. ["cg", "voice"].',
+      scriptExtensions: content.scripts, expectedScriptCount: null, storyCorpus: null,
+      noteStory: 'Ticket E1 points storyCorpus at the ignored extraction folder once script strings exist.' },
+    build: { devPort: 5317, partSizeBytes: 1048576, renderWidth: 1280, renderHeight: 960 },
+    native: { exePath: null, sha256: null, note: 'Ticket R1 records the original executable path and SHA-256; RE tools refuse to run on a mismatched binary.' },
+    deploy: { project: null, domain: null, branch: 'main',
+      note: 'Production deploy refuses placeholders: set the hosting project and domain with the user before S7.' },
+  }
+}
+
 export function files ({ id, full, name, engine }) {
   const eng = engine && engine !== '?' ? engine : 'unknown yet'
   return {
@@ -35,8 +66,9 @@ Shared rules and the "continue <game>" work loop: \`<workflow-root>\\AGENTS.md\`
 
 ## Game-specific rules
 - Game content lives only in \`game-data/\`, \`re/\`, \`ref/\`, \`private/\`, \`public/game/\`, \`dist/\` (all ignored).
-  \`npm run firewall\` before every commit; extend \`scripts/check-firewall.mjs\` with this game's file types and
-  a story-text check as soon as script strings can be extracted (Subahibi's firewall is the model).
+  \`npm run firewall\` before every commit; \`game.config.json\` holds this game's file types (ticket R1 narrows
+  \`content.archiveExtensions\`) and the firewall reads it; add a story-text check as soon as script strings can
+  be extracted (Subahibi's firewall is the model).
 `,
     'CLAUDE.md': '@AGENTS.md\n',
     'HANDOFF.md': `# HANDOFF: ${full} browser port (any agent)
@@ -54,14 +86,16 @@ Last updated ${today()} by new-port (scaffold). Keep this top block <= 60 lines;
     'docs/DECISIONS.md': `# Decisions (${full})\n\nEach entry: date, decision, evidence (PROVEN / STRONG / LEAD), rejected alternative.\n`,
     'docs/HISTORY.md': `# History (${full})\n\nOld HANDOFF top blocks, newest first.\n`,
     'docs/BACKLOG.md': backlog({ full }),
+    'game.config.json': JSON.stringify(gameConfig({ id, full, engine }), null, 2) + '\n',
     'package.json': JSON.stringify({
       name: `${id}-port`, private: true, version: '0.1.0', type: 'module',
       description: `Browser port of ${full}. Game files are supplied locally and never committed.`,
-      scripts: { test: 'node --test tests/', issue: 'node scripts/backlog.mjs', board: 'node scripts/board.mjs', firewall: 'node scripts/check-firewall.mjs' },
+      scripts: { test: 'node --test tests/', issue: 'node scripts/backlog.mjs', board: 'node scripts/board.mjs', firewall: 'node scripts/check-firewall.mjs', doctor: 'node scripts/doctor.mjs' },
     }, null, 2) + '\n',
     'scripts/backlog.mjs': wrapper(id, 'issue.mjs', '`npm run issue` - the shared VN-Ports ticket CLI on this checkout\'s docs/BACKLOG.md (`npm run issue -- help`).', true),
     'scripts/board.mjs': wrapper(id, 'board.mjs', '`npm run board` - opens the shared VN Ports board on this game.', false),
-    'scripts/check-firewall.mjs': firewall(),
+    'scripts/doctor.mjs': wrapper(id, 'doctor.mjs', '`npm run doctor` - environment preflight: OS, node, git, config, tooling, game files (read-only, never modifies).', true),
+    'scripts/check-firewall.mjs': firewall(engine),
     'tests/firewall.test.mjs': `import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
@@ -97,7 +131,8 @@ process.exit(r.status ?? 1)
 `
 }
 
-function firewall () {
+function firewall (engine) {
+  const baked = engineContent(engine).archives.join('|')
   return `#!/usr/bin/env node
 // Content firewall (starter): fails when a file git would commit is game content - a forbidden folder, a game file
 // type, an oversized blob, or a game binary renamed to an innocent extension. Matched names are printed, contents
@@ -110,7 +145,7 @@ function firewall () {
 // archives) are caught only by path/extension/size. This firewall cannot mathematically prove that no copyrighted
 // content is present - it proves the known game shapes are absent.
 import { execFileSync } from 'node:child_process'
-import { closeSync, existsSync, openSync, readSync, statSync } from 'node:fs'
+import { closeSync, existsSync, openSync, readFileSync, readSync, statSync } from 'node:fs'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -121,8 +156,19 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 // --- generic rules: every game, every port ---
 const FORBIDDEN_DIR = /^(game-data|re|ref|private|public\\/game|dist)\\//
 const GENERIC_EXT = /\\.(exe|dll|ogg|wav|mp3|m4a|aac|opus|jpg|jpeg|png|bmp|webp|avif|gif|mpg|mpeg|avi|wmv|mp4|webm|ttf|otf|pfs)$/i
-// --- engine rules: ticket E1 replaces these with this engine's archive/script/data extensions ---
-const ENGINE_EXT = /\\.(arc|xp3|npa|dat|pak)$/i
+// --- engine rules: baked from the scaffold's engine guess, overridden by game.config.json when present ---
+const ENGINE_EXT = /\\.(${baked})$/i
+// game.config.json (written by the scaffold, filled in R1) is the source of truth when present.
+const configExt = () => {
+  try {
+    const raw = JSON.parse(readFileSync(join(root, 'game.config.json'), 'utf8'))?.content?.archiveExtensions
+    if (!Array.isArray(raw)) return null
+    const safe = raw.map(e => String(e).replace(/^\\./, '')).filter(e => /^[a-z0-9_]{1,8}$/i.test(e))
+    if (!safe.length) return null
+    return new RegExp('\\\\.(' + safe.join('|') + ')$', 'i')
+  } catch { return null }
+}
+const ENGINE_EXT_LIVE = configExt() ?? ENGINE_EXT
 const ENGINE_DIR = null // e.g. /^(movies|voices)\\// when this engine keeps game blobs outside the generic dirs
 const MAX_BYTES = 2 * 1024 * 1024, SIZE_EXEMPT = new Set(['package-lock.json'])
 // First bytes of common game binaries: catches an exe/audio/image committed as .txt or with no extension.
@@ -136,7 +182,7 @@ const MAGIC = [
   ['mp4-video', b => b.length >= 8 && b[4] === 0x66 && b[5] === 0x74 && b[6] === 0x79 && b[7] === 0x70],
 ]
 const bad = file => (FORBIDDEN_DIR.test(file) && 'forbidden-path') || (ENGINE_DIR && ENGINE_DIR.test(file) && 'forbidden-path') ||
-  (GENERIC_EXT.test(file) && 'forbidden-extension') || (ENGINE_EXT.test(file) && 'forbidden-extension') || null
+  (GENERIC_EXT.test(file) && 'forbidden-extension') || (ENGINE_EXT_LIVE.test(file) && 'forbidden-extension') || null
 const sniff = buf => { for (const [kind, test] of MAGIC) { try { if (test(buf)) return kind } catch {} } return null }
 
 const git = args => {
@@ -160,7 +206,7 @@ const headBytes = (path, n = 12) => {
 // Self-test first: the check is trusted only when the planted fixtures are caught and clean code is not.
 const selfTestMagic = Buffer.from([0x4D, 0x5A, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00])
 if (bad('re/planted/sample.png') !== 'forbidden-path' || bad('src/a.ogg') !== 'forbidden-extension' ||
-    bad('src/a.arc') !== 'forbidden-extension' || bad('src/a.ts') || sniff(selfTestMagic) !== 'windows-binary' ||
+    bad('src/a.${baked.split('|')[0]}') !== 'forbidden-extension' || bad('src/a.ts') || sniff(selfTestMagic) !== 'windows-binary' ||
     sniff(Buffer.from('export const x = 1;\\n')) !== null) {
   console.error('firewall: FAIL - self-test did not catch the planted fixture (check not trusted)')
   process.exit(1)
@@ -310,6 +356,9 @@ export function scaffold ({ base = VN_ROOT, id, full, engine = '?', dir, aliases
   agentsFile = join(VN_ROOT, 'AGENTS.md'), git = true } = {}) {
   if (!/^[a-z][a-z0-9-]{1,30}$/.test(id ?? '')) throw new Error('id: lowercase letters, digits and -, e.g. "sengoku"')
   if (!full) throw new Error('full name required, e.g. "Sengoku Rance"')
+  if (dir !== undefined && dir !== null && (dir === '' || /[\\/]/.test(dir) || dir === '.' || dir === '..')) {
+    throw new Error('--dir must be a plain folder name under the base directory, e.g. "Sengoku Rance"')
+  }
   const name = dir ?? full
   const target = join(base, name)
   if (existsSync(target) && readdirSync(target).length) throw new Error(`${target} already exists and is not empty`)
@@ -344,11 +393,20 @@ export function scaffold ({ base = VN_ROOT, id, full, engine = '?', dir, aliases
     if (at >= 0) writeFileSync(agentsFile, md.slice(0, at) + row + '\n' + md.slice(at))
   }
   if (git) {
-    const run = args => execFileSync('git', args, { cwd: target, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
-    run(['init', '-q', '-b', 'main'])
-    execFileSync(process.execPath, [join(target, 'scripts', 'check-firewall.mjs')], { cwd: target, stdio: 'pipe' })
-    run(['add', '-A'])
-    run(['commit', '-q', '-m', `New port: ${full} (VN-Ports scaffold)\n\nFirewall-first skeleton, ledger with the playbook timeline and seed research tickets.`])
+    try { execFileSync('git', ['--version'], { stdio: ['ignore', 'pipe', 'pipe'] }) }
+    catch {
+      console.log(`new port: ${target} (files written; git is unavailable here, so commit them manually: git init -b main && git add -A && git commit)`)
+      return target
+    }
+    try {
+      const run = args => execFileSync('git', args, { cwd: target, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+      run(['init', '-q', '-b', 'main'])
+      execFileSync(process.execPath, [join(target, 'scripts', 'check-firewall.mjs')], { cwd: target, stdio: 'pipe' })
+      run(['add', '-A'])
+      run(['commit', '-q', '-m', `New port: ${full} (VN-Ports scaffold)\n\nFirewall-first skeleton, ledger with the playbook timeline and seed research tickets.`])
+    } catch (e) {
+      throw new Error(`scaffold wrote ${target} but could not finish the first commit (${e.message}); finish it manually: git add -A && git commit`)
+    }
   }
   return target
 }
