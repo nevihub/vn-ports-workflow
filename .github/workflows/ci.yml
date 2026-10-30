@@ -6,6 +6,12 @@ jobs:
   test:
     # Linux only: the workflow must never need Windows-only or paid tooling, game data, or secrets.
     runs-on: ubuntu-latest
+    # Fixture tests make local commits; a fresh runner has no git identity.
+    env:
+      GIT_AUTHOR_NAME: ci
+      GIT_AUTHOR_EMAIL: ci@example.invalid
+      GIT_COMMITTER_NAME: ci
+      GIT_COMMITTER_EMAIL: ci@example.invalid
     strategy:
       matrix:
         node: ['20', '22']
