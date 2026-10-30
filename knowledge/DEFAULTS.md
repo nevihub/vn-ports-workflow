@@ -7,7 +7,9 @@ a line in its own `AGENTS.md`/`CLAUDE.md` (Saya is a faithful 1:1 port; Subahibi
 
 ## Product
 - **Order:** playable start to finish first, then optimization. Compatibility/performance over pixel parity; comfort
-  over native fidelity when the native behaviour is annoying (except on Saya, which stays 1:1).
+  over native fidelity when the native behaviour is annoying (except on Saya, which stays 1:1). The bar is Subahibi:
+  not pixel-exact, but at a glance it looks and plays like the original - transitions, fades, logo timing, menus
+  and input feel match; a visible difference is a bug unless it is a listed comfort default (user, 2026-10-30).
 - **Skip:** hold-to-skip on Ctrl and on a touch Skip button (a native toggle was reverted on Saya). The in-game
   SKIP button and the text-skip setting keep native behaviour.
 - **Intro:** logos, warnings and opening are click-skippable even on the first launch.

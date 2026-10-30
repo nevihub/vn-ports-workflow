@@ -1,7 +1,8 @@
 {
   "note": "Last local VN-Ports commits synced here by scripts/public-sync.mjs",
   "sources": {
-    "root": "3181647e2c9796321c0c259c5f5a04a9a9a064e7",
+    "root": "c74b74d5bbd007efbf48ce642669b3ab18916609",
     "board": "5b7cb1c3081b25083970323e4ed0d05f4a24bc96"
-  }
+  },
+  "held": {}
 }
