@@ -8,10 +8,10 @@ One folder per game, one live board, one shared memory. Each game folder adds it
 
 1. **Start.** `cd` into the game folder. Read its `AGENTS.md`, `HANDOFF.md` top block, `git status`, `git log -5`. Never discard work you did not write. One writer per checkout (parallel agents use separate worktrees).
 2. **Goal.** `npm run issue -- goal` — Playable yes/no, board-computed %, stage you are in. State your goal in one line: "advance <stage> by finishing <tickets>".
-3. **Learn first.** Before a hard problem: `npm run kb -- "<words>"` (searches `knowledge/` + every game's decisions/handoffs) and the lesson log at the end of `knowledge/LESSONS.md`.
+3. **Learn first.** Before a hard problem: `npm run kb -- "<words>"` (searches `knowledge/` + every game's decisions/handoffs) and the lesson log at the end of `knowledge/LESSONS.md`. In a worktree, search that checkout instead of the main one: `node <workflow>/board/kb.mjs "<words>" --project <id> --root "<checkout>"`, and put that command in handoffs so the next agent searches the same checkout.
 4. **Pick.** `npm run issue -- next --agent <you>` (skips claimed, blocked, user (`U`) tickets, unmet `Needs:`, other worktrees). `claim` before working; record the model on the claim. Give the ticket a `Proof:` (`npm run <script>`) if it has none.
 5. **Work and prove.** Meet the `Gate:` with evidence; `progress` as you move. Run the game's checks (firewall, tests, typecheck). Commit locally in small steps. Post one line others need (`say --kind found|blocked|question|heads-up|handoff`).
-6. **Close and audit.** `npm run issue -- done <ID>` runs the `Proof:` first and refuses to close on failure — fix the work, never the checker. Then `audit` and apply what is right; file follow-ups with `issue new` (each with `Plain:` + `Gate:`).
+6. **Close and audit.** `npm run issue -- done <ID>` runs the `Proof:` first and refuses to close on failure — fix the work, never the checker. Then `audit` and apply what is right; file follow-ups with `issue new` (each with `Plain:` + `Gate:`). **Close what your work finished, unasked:** after a deploy, a user decision, or a finished candidate, run `npm run issue -- list` and close every ticket whose Gate is now met (also ones left at 90% "waiting for deploy" or "waiting on the user"), noting any part the user waived; whoever deploys closes the tickets that deploy completes, in the same turn.
 7. **Record.** One `issue learn "<lesson>"` when another port could use it. Keep `HANDOFF.md` under 60 lines / 4,500 bytes; move history to its archive. Done cards get a plain outcome (`--note/--before/--after/--evidence`).
 8. **Loop** until `next` returns nothing you may take, a gate failed twice (block it, write what you tried, continue), or the only way on needs the user. Finish with five lines: Playable yes/no, stage and %, finished IDs, blocked + why, needs from user.
 
@@ -30,7 +30,7 @@ One folder per game, one live board, one shared memory. Each game folder adds it
 
 Push or deploy · game content on a new site/domain · anything that costs money · destroying user data or irreversible steps outside a repo · changing a locked checker · a new direction no default covers (once, recommended option first). Everything else: decide with `knowledge/DEFAULTS.md`, record it, report it.
 
-## Tools (from any game folder)
+## Tools (from a game folder unless another location is specified)
 
 | Command | What |
 |---|---|
@@ -38,7 +38,7 @@ Push or deploy · game content on a new site/domain · anything that costs money
 | `npm run issue -- claim/progress/note/done/block/drop/reopen/needs/plain/new` | keep the ledger live |
 | `npm run issue -- learn "<lesson>" --tags a,b` | share a lesson with every port |
 | `npm run issue -- inbox / say / channel` | agent channel (one line, ≤600 chars) |
-| `npm run kb -- "<words>"` | search shared knowledge + decisions/handoffs |
+| `npm run kb -- "<words>" [--project <id> [--root <checkout>]]` | search shared knowledge + decisions/handoffs (optionally one worktree checkout) |
 | `npm run board` | live board for all games |
 
 ## Ledger rules (`docs/BACKLOG.md` in each game)
