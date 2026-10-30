@@ -50,7 +50,8 @@ Steps 3-5 are the first three playbook stages that the U4 test checks.
   and the change it implies.
 - Timebox: after about an hour without an answer, write `// shortcut: <limit>, <when to upgrade>` with the best guess,
   list it in the handoff, and move on.
-- Never let the native game take over the screen or the focus while testing (headless runs only).
+- Running the native game on screen (focused or not) is allowed for reference capture; use a hash-checked copy,
+  never the install (user, 2026-10-30; see root `AGENTS.md`).
 
 ## 3. Tools inventory
 
