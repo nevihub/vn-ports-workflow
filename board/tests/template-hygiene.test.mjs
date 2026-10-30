@@ -11,6 +11,9 @@ import { files as scaffoldFiles } from '../new-port.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const TEMPLATES = join(HERE, '..', '..', 'templates')
+// --experimental-strip-types exists from Node 22.6; older Nodes cannot syntax-check .ts files at all.
+const [major, minor] = process.versions.node.split('.').map(Number)
+const CAN_STRIP_TYPES = major > 22 || (major === 22 && minor >= 6)
 
 // Files already migrated to game.config.json (P0-3). Each new migration appends its path here;
 // the suite then holds it to the same bar: no hard-coded game, clean syntax, schema agreement.
@@ -130,8 +133,10 @@ test('migrated template scripts read game.config.json and parse clean', () => {
     const text = readFileSync(join(TEMPLATES, rel), 'utf8')
     assert.ok(!/saya/i.test(text), `${rel} still names the Saya game`)
     assert.ok(!/\.npa/i.test(text), `${rel} still hard-codes a .npa extension`)
-    execFileSync(process.execPath, ['--experimental-strip-types', '--check', join(TEMPLATES, rel)],
-      { stdio: ['ignore', 'pipe', 'pipe'] })
+    if (CAN_STRIP_TYPES) {
+      execFileSync(process.execPath, ['--experimental-strip-types', '--check', join(TEMPLATES, rel)],
+        { stdio: ['ignore', 'pipe', 'pipe'] })
+    }
   }
   for (const rel of ['scripts/pwa.ts', 'vite.config.ts']) {
     assert.ok(readFileSync(join(TEMPLATES, rel), 'utf8').includes('game.config.json'), `${rel} does not read the per-game config`)
@@ -254,9 +259,13 @@ test('migrated deploy/split scripts run against a fixture game checkout', () => 
   writeFileSync(join(dir, 'game.config.json'), JSON.stringify(cfg))
   const scripts = join(dir, 'scripts')
   cpSync(join(TEMPLATES, 'scripts'), scripts, { recursive: true })
+  // The prepared preflight only checks that a Wrangler CLI exists; CI has none cached, so point it at a stub.
+  const wrangler = join(dir, 'wrangler-stub.js')
+  writeFileSync(wrangler, '')
+  const env = { ...process.env, GAME_WRANGLER_CLI: wrangler }
   const run = (script, args) => {
     const r = spawnSync(process.execPath, [join(scripts, script), ...args],
-      { encoding: 'utf8', cwd: dir, stdio: ['ignore', 'pipe', 'pipe'] })
+      { encoding: 'utf8', cwd: dir, env, stdio: ['ignore', 'pipe', 'pipe'] })
     if (r.status !== 0) throw Object.assign(new Error(`${script} exited ${r.status}: ${r.stderr}${r.stdout}`), { stdout: r.stdout, stderr: r.stderr })
     return `${r.stdout}${r.stderr}`
   }

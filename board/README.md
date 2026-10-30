@@ -69,6 +69,9 @@ Ideas from the MW2 agent decompilation (`..\knowledge\LESSONS.md` §8):
 ## Search and new ports
 - `npm run kb -- "<words>"` - every word on one line, across an allowlist only: `..\knowledge\*.md`, the root
   `AGENTS.md`, each game's agent docs and `docs\DECISIONS/BACKLOG/HISTORY/...`. Never game data.
+  When handing off or resuming a worktree, use `npm run kb -- "<words>" --project <id> --root "<checkout>"`
+  to search that checkout's handoff, decisions and ledger in place of the configured main checkout. Shared
+  knowledge and the document allowlist remain unchanged; invalid roots fail rather than falling back.
 - `npm run new-port -- <id> "<Full name>" "<engine>"` - firewall-first repo, ledger with the playbook stages and
   seed tickets, wrappers, first local commit, `projects.json` entry and a router row in `..\AGENTS.md`.
 

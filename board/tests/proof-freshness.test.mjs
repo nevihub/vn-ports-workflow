@@ -60,7 +60,9 @@ function fixture () {
     utimesSync(join(root, f), new Date(t0), new Date(t0))
   }
   // mtime-stale only: the proof is current, but a source file changed after it was captured.
-  utimesSync(join(root, 'src', 'app.ts'), new Date(), new Date())
+  // Not "now": Linux stamps new files from a coarse clock that can trail Date.now(), so a proof written next
+  // could look older than this touch. Halfway between the rewound proofs and now keeps both orderings.
+  utimesSync(join(root, 'src', 'app.ts'), new Date(base - 30000), new Date(base - 30000))
   // Fresh: current commit and newest file in the checkout, so neither path calls it stale.
   proof('fresh-ok.json', c2)
   const rewind = file => utimesSync(join(root, file), new Date(t0), new Date(t0))
