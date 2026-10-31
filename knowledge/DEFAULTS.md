@@ -23,6 +23,9 @@ a line in its own `AGENTS.md`/`CLAUDE.md` (Saya is a faithful 1:1 port; Subahibi
 - **Audio:** a bigger buffer is fine (adaptive lead, up to ~1 s before fetches).
 - **Performance:** draw/fps cap, no draws while hidden, `?perf=1` readout with a downloadable log (files, not
   screenshots) and a way to fold the readout away.
+- **Loading measurements:** lead with the time a player experiences when clicking through skippable logos and
+  pressing Start, including title and first playable scene checkpoints. Split cold/warm visits and actual loading
+  from skippable intro waits; retain separate no-input tests for logo fidelity (user, 2026-10-31).
 - **Data:** the user hosts the game data; never design for players bringing their own files.
 - **Hosting:** Cloudflare Pages on `<game>.example.com`; never paid storage - split big files into <25 MiB parts.
   Each new domain needs one approval from the user.
