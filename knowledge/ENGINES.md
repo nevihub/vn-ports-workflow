@@ -37,6 +37,25 @@ the same headings and fill it as research lands. Never quote game text here.
 - **GPL runtimes:** publishing a WASM build derived from a GPL runtime means publishing its source (approved for
   Subahibi's OpenBGI route; ask before the first public Sakura build).
 
+## Switch Mahoyo / Knife (Witch on the Holy Night)
+
+- PROVEN (source): pinned [Knife 0.9.10](https://github.com/AuroraWright/knife/tree/dee6f9d57fedc38fc6a09778dd2edc8d9280b163),
+  MPL-2.0, implements Mahoyo execution, rendering, text, menus, audio and saves. `knife-core` parses formats;
+  gameplay execution is in `knife/src/game.rs`. Native release build and 62 unit tests pass; game acceptance is pending.
+- PROVEN (source): Switch MRG/MZP/MZX archives, BNTX/BFFNT/BFTTF resources, BFSAR/Opus audio and movies need their
+  existing readers preserved. Whole-archive mmap is native-only; browser reads require bounded owned buffers and
+  correct offsets above 4 GiB. The sound archive's startup indexing also needs a separate browser asset step.
+- PROVEN: the supplied updated executable is 1.0.2, build prefix `38483f1729c6ffdd`; the pin accepts Mahoyo
+  `59886436b329250b`. A filename or display version is insufficient to establish executable-table compatibility.
+- STRONG route: port existing Knife to WASM after native reference validation; avoid writing another VM.
+- LEAD: engine + renderer in a worker with OffscreenCanvas/WebGPU. Browser support, real movie transfer, mobile
+  memory and complete game coverage remain feasibility gates, not established capabilities.
+- Pitfalls: upstream Git includes game-derived table bundles/captures; keep a verified private source snapshot and
+  tracked original patches, not imported history. Preserve MPL duties. PC HFA/CHS is a different compatibility task.
+- Transfers: private asset manifests, small served parts, verbatim engine saves and measured player loading flow.
+  The user's Mahoyo boundary defers optional UI/font/comfort features until the complete game passes validation.
+- Details: `Witch on the Holy Night/docs/RESEARCH.md`, `docs/DECISIONS.md`, `upstream.lock.json`.
+
 ## Template for a new engine
 ```
 ## <Engine name> (<game>)
