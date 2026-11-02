@@ -1,7 +1,7 @@
 {
   "note": "Last local VN-Ports commits synced here by scripts/public-sync.mjs",
   "sources": {
-    "root": "fe6a1c4d49abe1126eb09d5b2aeafb039587c402",
+    "root": "3363ac221dfe629905a82aba270d4cc09482b0f8",
     "board": "5b7cb1c3081b25083970323e4ed0d05f4a24bc96"
   },
   "held": {
@@ -9,7 +9,7 @@
       "kind": "lesson",
       "why": "lesson not marked proven (LEAD/STRONG/untested/not yet/probably...)",
       "label": "- 2026-10-31 [sakura] (touch, export, artemis,...",
-      "review": "knowledge/LESSONS.md line 348 at root fe6a1c4"
+      "review": "knowledge/LESSONS.md line 348 at root 3363ac2"
     }
   }
 }
