@@ -1,15 +1,15 @@
 {
   "note": "Last local VN-Ports commits synced here by scripts/public-sync.mjs",
   "sources": {
-    "root": "c341cee69847d63a2c11fb340d52406f2d8d4f6b",
-    "board": "5b7cb1c3081b25083970323e4ed0d05f4a24bc96"
+    "root": "6770b6dd74b87f9c1edc3805cffc1567106e7031",
+    "board": "34dfdf129c4acd26032ae6976de9de820a240e1c"
   },
   "held": {
     "lesson:78fbbace857a": {
       "kind": "lesson",
       "why": "lesson not marked proven (LEAD/STRONG/untested/not yet/probably...)",
       "label": "- 2026-10-31 [sakura] (touch, export, artemis,...",
-      "review": "knowledge/LESSONS.md line 348 at root c341cee"
+      "review": "knowledge/LESSONS.md line 348 at root 6770b6d"
     }
   }
 }

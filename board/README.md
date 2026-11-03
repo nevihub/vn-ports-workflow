@@ -31,6 +31,12 @@ extension can send arbitrary headers — so the `x-board` header is **not** a se
 - **Tickets** (per game): columns with model tags, live progress bars, "next up" / "ready" / "after E1" chips and
   copyable handoff prompts that end in the work loop.
 
+## Token report (`npm run tokens`, from `board\`)
+Read-only report on the OpenCode session database (`..\..\.local\share\opencode\opencode.db` on Windows):
+requests, uncached vs cached input, output and reasoning, a cost-weighted total, average prompt size, share of
+requests over 128K, repeated file reads, big cache misses, and tickets closed per game with tokens per ticket.
+`npm run tokens -- --days 30`, `--since 2026-10-16`, or `--json`. It never writes to the database.
+
 ## The ticket CLI (`issue.mjs`; `npm run issue -- help` in any game)
 Each game's `npm run issue` runs this file on that checkout's ledger (`--project <id> --root <checkout>`), so a
 worktree edits its own copy. Library: `lib/backlog.mjs` (writers, `rankNext`), parser `lib/ledger.mjs` (the format),
