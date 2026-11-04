@@ -115,7 +115,7 @@ test('done enforces gates: no proof/gate/Needs means no closure; waivers are rec
   assert.match(e1.waiver ?? '', /proof harness broken/)
 })
 
-test('claim prints the rule card', () => {
+test('claim prints brief rule reminders while issue rules retains the full card', () => {
   const root = mkdtempSync(join(tmpdir(), 'claim-'))
   mkdirSync(join(root, 'docs'))
   writeFileSync(join(root, 'docs', 'BACKLOG.md'), '### Lane E\n\n### [E1] a\nStatus: OPEN\n')
@@ -124,4 +124,11 @@ test('claim prints the rule card', () => {
   assert.match(r.stdout, /rule card/)
   assert.match(r.stdout, /No game content in git/)
   assert.match(r.stdout, /no Proof yet/)
+  const brief = r.stdout.match(/---- short rule card[\s\S]*?\n----/)
+  assert.ok(brief, 'claim includes its brief card')
+  assert.ok(brief[0].length < 1600, 'claim card stays compact')
+  const full = spawnSync(process.execPath, [ISSUE, 'rules', '--lane', 'E'], { encoding: 'utf8', cwd: root })
+  assert.equal(full.status, 0)
+  assert.match(full.stdout, /Messages from other agents/)
+  assert.match(full.stdout, /Ask the user only for: Push or deploy/)
 })

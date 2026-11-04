@@ -1,10 +1,11 @@
 #!/usr/bin/env node
-// Token report for OpenCode sessions: tokens, cache use, context size, waste signals, and
+// Token report for OpenCode and Claude Code sessions. The Claude reader uses JSONL usage fields only.
 // tickets closed per game. Read-only: opens opencode.db with readOnly and never writes.
 //
 //   npm run tokens                 last 7 days
 //   npm run tokens -- --days 30
 //   npm run tokens -- --since 2026-10-16
+//   npm run tokens -- --source claude --days 7
 //   npm run tokens -- --json
 //
 // Cost units are a rough weighting so cached reads do not hide the bill:
@@ -12,10 +13,13 @@
 // Change them with --w-cache=0.1 etc. They are assumptions, not prices.
 
 import { DatabaseSync } from "node:sqlite";
-import { readFileSync, existsSync } from "node:fs";
+import { createReadStream, readFileSync, existsSync } from "node:fs";
+import { readdir } from "node:fs/promises";
+import { createInterface } from "node:readline";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { claudeUsage, summarizePrompts } from "./lib/token-usage.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DB = process.env.OPENCODE_DB || path.join(homedir(), ".local/share/opencode/opencode.db");
@@ -31,6 +35,7 @@ const flag = (name, fallback) => {
 };
 
 const json = Boolean(flag("json", false));
+const source = String(flag("source", "opencode")).toLowerCase();
 const days = Number(flag("days", 7));
 const sinceArg = flag("since", null);
 const W = {
@@ -61,6 +66,117 @@ function loadProjects() {
 }
 
 const projects = loadProjects();
+
+async function claudeFiles (dir) {
+  const out = [];
+  async function visit (current) {
+    let entries;
+    try { entries = await readdir(current, { withFileTypes: true }); } catch { return; }
+    for (const entry of entries) {
+      const file = path.join(current, entry.name);
+      if (entry.isDirectory()) await visit(file);
+      else if (entry.isFile() && entry.name.toLowerCase().endsWith(".jsonl")) out.push(file);
+    }
+  }
+  await visit(dir);
+  return out;
+}
+
+async function reportClaude () {
+  const dir = process.env.CLAUDE_PROJECTS_DIR || path.join(homedir(), ".claude", "projects");
+  if (!existsSync(dir)) {
+    console.error(`no Claude project logs at ${dir}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const end = Date.now();
+  const files = await claudeFiles(dir);
+  const sessions = new Map();
+  const seenRequests = new Map();
+  let malformedRows = 0;
+  let missingTimestamps = 0;
+
+  for (const file of files) {
+    const input = createReadStream(file, { encoding: "utf8" });
+    const lines = createInterface({ input, crlfDelay: Infinity });
+    for await (const line of lines) {
+      if (!line.trim()) continue;
+      let record;
+      try { record = JSON.parse(line); } catch { malformedRows += 1; continue; }
+      const usage = claudeUsage(record);
+      if (!usage) continue;
+      const sessionId = usage.sessionId || path.basename(file, ".jsonl");
+      if (usage.requestId) {
+        if (!seenRequests.has(sessionId)) seenRequests.set(sessionId, new Set());
+        const seen = seenRequests.get(sessionId);
+        if (seen.has(usage.requestId)) continue;
+        seen.add(usage.requestId);
+      }
+      if (usage.timestampMs === null) { missingTimestamps += 1; continue; }
+      if (!sessions.has(sessionId)) sessions.set(sessionId, { first: null, prompts: [] });
+      const session = sessions.get(sessionId);
+      if (!session.first || usage.timestampMs < session.first.timestampMs) session.first = usage;
+      if (usage.timestampMs >= since && usage.timestampMs <= end) session.prompts.push(usage.prompt);
+    }
+  }
+
+  const activeSessions = [...sessions.values()].filter(session => session.prompts.length);
+  const prompts = activeSessions.flatMap(session => session.prompts);
+  const requestSummary = summarizePrompts(prompts);
+  const freshFirstPrompts = [...sessions.values()]
+    .filter(session => session.first && session.first.timestampMs >= since && session.first.timestampMs <= end)
+    .map(session => session.first.prompt);
+  const firstSummary = summarizePrompts(freshFirstPrompts);
+  const perSessionRequests = summarizePrompts(activeSessions.map(session => session.prompts.length));
+  const perSessionAvgPrompt = summarizePrompts(activeSessions.map(session =>
+    session.prompts.reduce((sum, prompt) => sum + prompt, 0) / session.prompts.length));
+  const summary = {
+    source: "claude",
+    windowStart: new Date(since).toISOString().slice(0, 10),
+    windowEnd: new Date(end).toISOString().slice(0, 10),
+    sessions: activeSessions.length,
+    requests: requestSummary.requests,
+    avgPrompt: requestSummary.avgPrompt,
+    p50Prompt: requestSummary.p50Prompt,
+    p90Prompt: requestSummary.p90Prompt,
+    over128k: requestSummary.over128k,
+    over128kPct: requestSummary.over128kPct,
+    over200k: requestSummary.over200k,
+    over200kPct: requestSummary.over200kPct,
+    firstRequest: {
+      sessions: firstSummary.requests,
+      avgPrompt: firstSummary.avgPrompt,
+      p50Prompt: firstSummary.p50Prompt,
+      p90Prompt: firstSummary.p90Prompt,
+      over128kPct: firstSummary.over128kPct,
+    },
+    perSession: {
+      avgRequests: perSessionRequests.avgPrompt,
+      p50Requests: perSessionRequests.p50Prompt,
+      p90Requests: perSessionRequests.p90Prompt,
+      avgPrompt: perSessionAvgPrompt.avgPrompt,
+      p50Prompt: perSessionAvgPrompt.p50Prompt,
+      p90Prompt: perSessionAvgPrompt.p90Prompt,
+    },
+    malformedRows,
+    missingTimestamps,
+  };
+
+  if (json) {
+    console.log(JSON.stringify(summary, null, 2));
+    return;
+  }
+  console.log(`Claude token report  ${summary.windowStart} .. ${summary.windowEnd}`);
+  console.log(`requests        ${fmt(summary.requests)} across ${summary.sessions} sessions`);
+  console.log(`prompt avg/p50/p90 ${fmt(summary.avgPrompt)} / ${fmt(summary.p50Prompt)} / ${fmt(summary.p90Prompt)}`);
+  console.log(`over 128K       ${summary.over128kPct}%   over 200K: ${summary.over200kPct}%`);
+  console.log(`first request   ${fmt(summary.firstRequest.sessions)} fresh sessions; avg/p50/p90 ${fmt(summary.firstRequest.avgPrompt)} / ${fmt(summary.firstRequest.p50Prompt)} / ${fmt(summary.firstRequest.p90Prompt)}`);
+  console.log(`per session     avg ${fmt(summary.perSession.avgRequests)} requests (p50 ${fmt(summary.perSession.p50Requests)}, p90 ${fmt(summary.perSession.p90Requests)}); mean prompt avg/p50/p90 ${fmt(summary.perSession.avgPrompt)} / ${fmt(summary.perSession.p50Prompt)} / ${fmt(summary.perSession.p90Prompt)}`);
+  if (summary.malformedRows || summary.missingTimestamps) {
+    console.log(`omitted rows     malformed ${fmt(summary.malformedRows)}; missing timestamps ${fmt(summary.missingTimestamps)}`);
+  }
+}
 
 function matchGame(dir) {
   if (!dir) return null;
@@ -113,7 +229,13 @@ function ticketsDone(from, to) {
   return out;
 }
 
-if (!existsSync(DB)) {
+if (source === "claude") {
+  await reportClaude();
+} else {
+if (source !== "opencode") {
+  console.error(`unknown token source ${source}; choose opencode or claude`);
+  process.exit(1);
+} else if (!existsSync(DB)) {
   console.error(`no OpenCode database at ${DB}\nset OPENCODE_DB to point at opencode.db`);
   process.exit(1);
 }
@@ -137,6 +259,8 @@ for (const row of db.prepare("select id, directory, parent_id from session_v2").
 
 const blank = () => ({
   sessions: new Set(),
+  prompts: [],
+  firstRequestPrompts: [],
   requests: 0,
   uncached: 0,
   cacheRead: 0,
@@ -163,8 +287,8 @@ const rows = db
   .prepare("select session_id, type, time_created, data from session_message where type in ('assistant') order by session_id, seq")
   .all();
 
+const firstOpenCodeRequest = new Map();
 for (const row of rows) {
-  if (row.time_created < since) continue;
   let d;
   try {
     d = JSON.parse(row.data);
@@ -183,9 +307,15 @@ for (const row of rows) {
   const prompt = uncached + cacheRead + cacheWrite;
   const game = sessionGame.get(row.session_id) || "other";
 
+  if (!firstOpenCodeRequest.has(row.session_id)) {
+    firstOpenCodeRequest.set(row.session_id, { prompt, time: row.time_created, game });
+  }
+  if (row.time_created < since) continue;
+
   const add = (b) => {
     b.sessions.add(row.session_id);
     b.requests += 1;
+    b.prompts.push(prompt);
     b.uncached += uncached;
     b.cacheRead += cacheRead;
     b.cacheWrite += cacheWrite;
@@ -238,6 +368,13 @@ for (const row of rows) {
   }
 }
 
+for (const [sessionId, first] of firstOpenCodeRequest) {
+  if (first.time < since || first.time > Date.now()) continue;
+  total.firstRequestPrompts.push(first.prompt);
+  const game = byGame.get(first.game);
+  if (game) game.firstRequestPrompts.push(first.prompt);
+}
+
 const costUnits = (b) =>
   b.uncached + b.cacheRead * W.cache + b.cacheWrite * W.cacheWrite + b.output * W.output + b.reasoning * W.reasoning;
 
@@ -269,7 +406,7 @@ function table(rowsIn) {
         mtok(r.cacheRead).padStart(10),
         mtok(r.output + r.reasoning).padStart(9),
         mtok(r.cost).padStart(9),
-        fmt(r.requests ? (r.uncached + r.cacheRead) / r.requests : 0).padStart(10),
+        fmt(summarizePrompts(r.prompts).avgPrompt).padStart(10),
         pct(r.over128k, r.requests).padStart(6) + "%",
         fmt(r.repeatReadTokens).padStart(8),
         fmt(r.misses).padStart(7),
@@ -291,7 +428,10 @@ const perGame = [...byGame.entries()]
   }))
   .sort((a, b) => b.uncached + b.cacheRead - (a.uncached + a.cacheRead));
 
+const promptStats = summarizePrompts(total.prompts);
+const firstPromptStats = summarizePrompts(total.firstRequestPrompts);
 const summary = {
+  source: "opencode",
   windowStart: new Date(since).toISOString().slice(0, 10),
   windowEnd: new Date().toISOString().slice(0, 10),
   database: DB,
@@ -305,9 +445,18 @@ const summary = {
   promptTokens: Math.round(total.uncached + total.cacheRead + total.cacheWrite),
   cacheHitPct: um(total.cacheRead, total.cacheRead + total.uncached),
   costUnits: Math.round(costUnits(total)),
-  avgPrompt: Math.round(total.requests ? (total.uncached + total.cacheRead) / total.requests : 0),
+  avgPrompt: promptStats.avgPrompt,
+  p50Prompt: promptStats.p50Prompt,
+  p90Prompt: promptStats.p90Prompt,
   over128kPct: um(total.over128k, total.requests),
   over200kPct: um(total.over200k, total.requests),
+  firstRequest: {
+    sessions: firstPromptStats.requests,
+    avgPrompt: firstPromptStats.avgPrompt,
+    p50Prompt: firstPromptStats.p50Prompt,
+    p90Prompt: firstPromptStats.p90Prompt,
+    over128kPct: firstPromptStats.over128kPct,
+  },
   toolCalls: total.toolCalls,
   toolOutputTokens: Math.round(total.toolOut),
   bigToolOutputs: total.bigOut,
@@ -326,7 +475,15 @@ const summary = {
     output: Math.round(g.output),
     reasoning: Math.round(g.reasoning),
     costUnits: Math.round(costUnits(g)),
-    avgPrompt: Math.round(g.requests ? (g.uncached + g.cacheRead) / g.requests : 0),
+    avgPrompt: summarizePrompts(g.prompts).avgPrompt,
+    p50Prompt: summarizePrompts(g.prompts).p50Prompt,
+    p90Prompt: summarizePrompts(g.prompts).p90Prompt,
+    firstRequest: {
+      sessions: g.firstRequestPrompts.length,
+      avgPrompt: summarizePrompts(g.firstRequestPrompts).avgPrompt,
+      p50Prompt: summarizePrompts(g.firstRequestPrompts).p50Prompt,
+      p90Prompt: summarizePrompts(g.firstRequestPrompts).p90Prompt,
+    },
     over128kPct: um(g.over128k, g.requests),
     repeatReadTokens: Math.round(g.repeatReadTokens),
     bigCacheMisses: g.misses,
@@ -338,9 +495,9 @@ const summary = {
     .map(([day, b]) => ({
       day,
       requests: b.requests,
-      promptTokens: Math.round(b.uncached + b.cacheRead),
+      promptTokens: Math.round(b.prompts.reduce((sum, n) => sum + n, 0)),
       costUnits: Math.round(costUnits(b)),
-      avgPrompt: Math.round(b.requests ? (b.uncached + b.cacheRead) / b.requests : 0),
+      avgPrompt: summarizePrompts(b.prompts).avgPrompt,
     })),
 };
 
@@ -363,7 +520,8 @@ console.log(`  cache read    ${mtok(summary.cacheRead)}M`);
 console.log(`output+reason   ${mtok(summary.output + summary.reasoning)}M  (reasoning ${mtok(summary.reasoning)}M)`);
 console.log(`cost units      ${mtok(summary.costUnits)}M  (uncached 1, cache ${W.cache}, output ${W.output})`);
 console.log("");
-console.log(`avg prompt      ${fmt(summary.avgPrompt)}   over 128K: ${summary.over128kPct}%   over 200K: ${summary.over200kPct}%`);
+console.log(`avg/p50/p90     ${fmt(summary.avgPrompt)} / ${fmt(summary.p50Prompt)} / ${fmt(summary.p90Prompt)} prompt; over 128K: ${summary.over128kPct}%   over 200K: ${summary.over200kPct}%`);
+console.log(`first request   ${fmt(summary.firstRequest.sessions)} fresh sessions; avg/p50/p90 ${fmt(summary.firstRequest.avgPrompt)} / ${fmt(summary.firstRequest.p50Prompt)} / ${fmt(summary.firstRequest.p90Prompt)}`);
 console.log(`tool calls      ${fmt(summary.toolCalls)}   output ${mtok(summary.toolOutputTokens)}M   >4K outputs: ${fmt(summary.bigToolOutputs)}`);
 console.log(`repeat reads    ${fmt(summary.repeatReads)} calls, ${mtok(summary.repeatReadTokens)}M tokens`);
 console.log(`cache misses    ${fmt(summary.bigCacheMisses)} requests >20K uncached, ${mtok(summary.bigCacheMissTokens)}M uncached`);
@@ -379,4 +537,5 @@ for (const d of summary.perDay.slice(0, 8)) {
   console.log(
     `  ${d.day}  req ${String(d.requests).padStart(5)}  prompt ${mtok(d.promptTokens).padStart(7)}M  avg ${fmt(d.avgPrompt).padStart(7)}  cost ${mtok(d.costUnits).padStart(5)}M`,
   );
+}
 }
