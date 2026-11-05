@@ -88,6 +88,7 @@ const HELP = `usage: npm run issue [--] <command> [args]          (lanes here: $
   audit [--json]                                    what needs attention after changes (never writes)
   rescue [ID] [--json]                              stuck cards: related work, lessons and messages to review
   rules [--lane X]                                  the full rule card (claim prints brief reminders)
+  worktrees                                         other checkouts: merged?, uncommitted files, claims they hold (never removes)
  stuck cards
   If audit finds a claim idle >12h and its agent is offline, inspect show + git log; adopt/reassign it, or run Proof and close it if the Gate already passes.
   Record a concrete retry path with recovery; use Needs only for mandatory prerequisites, Related for optional leads.
@@ -209,9 +210,32 @@ function nextCommand () {
     console.log(`  claim: npm run issue -- claim ${top.id} --by "${agent ?? '<agent>'} <worktree>"`)
     if (rest.length) console.log(`then: ${rest.slice(0, 4).map(i => `${i.id} (${stageName(i.id)} ${i.prio ?? '-'})`).join(', ')}`)
   }
-  if (flags.explain) {
+  // An empty queue always says why, so the loop stops on evidence instead of re-checking each card by hand.
+  if (flags.explain || !ready.length) {
     console.log('\nskipped:')
     for (const s of skipped) console.log(`  ${s.item.id.padEnd(5)} ${s.why}`)
+  }
+}
+
+// Read-only: every other checkout, whether it is merged here, and what it still holds. It never removes anything;
+// a merged, clean worktree holding nothing is named as a candidate for the guarded `npm run worktree-clean`.
+function worktreesCommand () {
+  const items = parse(read())
+  const here = new Map(items.map(i => [i.id, i.state]))
+  const { sources } = worktrees(root, { maxAgeMs: 0 })
+  if (!sources.length) { console.log('no other worktrees'); return }
+  const run = (dir, args) => { try { return execFileSync('git', args, { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true }).trim() } catch { return null } }
+  for (const s of sources) {
+    const status = run(s.dir, ['status', '--porcelain'])
+    const dirty = status === null ? '?' : status.split('\n').filter(Boolean).length
+    const last = run(s.dir, ['log', '-1', '--format=%cI'])
+    const days = last ? Math.floor((Date.now() - Date.parse(last)) / 86400_000) : null
+    const holds = (s.items ?? []).filter(i => (i.state === 'claimed' || i.state === 'blocked') && here.get(i.id) !== i.state)
+      .map(i => `${i.id} ${i.state}`)
+    console.log(`${s.name}  ${s.branch ?? 'detached'}  ${s.merged ? 'merged' : 'not merged'} · ${dirty} uncommitted · last commit ${days === null ? '?' : `${days}d`} ago`)
+    console.log(`  ${s.dir}`)
+    if (holds.length) console.log(`  holds: ${holds.join(', ')}${s.merged ? ' (ignored here: merged)' : ''}`)
+    if (s.merged && dirty === 0 && !holds.length) console.log('  cleanup candidate: add it to board/worktree-clean.json, then npm run worktree-clean (board folder)')
   }
 }
 
@@ -606,6 +630,7 @@ switch (command) {
   case 'goal': goalCommand(); break
   case 'next': nextCommand(); break
   case 'audit': auditCommand(); break
+  case 'worktrees': worktreesCommand(); break
   case 'rescue': rescueCommand(); break
   case 'new': newCommand(); break
   case 'claim': claimCommand(positional[0]); break

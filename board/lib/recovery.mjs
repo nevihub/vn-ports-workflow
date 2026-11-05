@@ -19,12 +19,11 @@ export function recoveryCards (items, { messages = [], lessons = [], now = Date.
       ? (it.topics ?? []).some(topic => topic.length > 3 && String(m.text).toLowerCase().includes(topic))
       : m.ticket && (m.ticket === it.id || linked.includes(m.ticket))).slice(0, 6)
     const signals = []
-    if (dependencies.length && dependencies.every(id => byId.get(id).state === 'done')) signals.push('The named prerequisites are finished. Review the remaining gate before reopening.')
-    if (since && linked.some(id => {
-      const t = byId.get(id)
-      const finished = t.at ?? ms(t.date ? `${t.date}T${t.time ?? '00:00'}:00` : null)
-      return t.state === 'done' && finished > since
-    })) signals.push('A related card finished since the last review.')
+    const finished = t => t.at ?? ms(t.date ? `${t.date}T${t.time ?? '00:00'}:00` : null)
+    // Once a review postdates the last prerequisite, finished prerequisites alone are no reason to review again.
+    if (dependencies.length && dependencies.every(id => byId.get(id).state === 'done') &&
+      (!since || dependencies.some(id => finished(byId.get(id)) > since))) signals.push('The named prerequisites are finished. Review the remaining gate before reopening.')
+    if (since && linked.some(id => byId.get(id).state === 'done' && finished(byId.get(id)) > since)) signals.push('A related card finished since the last review.')
     if (since && matchingMessages.some(m => m.at > since)) signals.push('There are newer agent messages to check.')
     if (since && matchingLessons.some(l => l.date > new Date(since).toISOString().slice(0, 10))) signals.push('There is newer shared knowledge to check.')
     if (since && now - since >= 7 * 86400_000) signals.push('This card has not been reviewed for at least a week.')

@@ -130,6 +130,12 @@ not reviewed for a week. They never reopen a ticket or execute instructions from
 lead and explicitly reopens only when the blocker is resolved. Otherwise `issue reviewed E10 "checked X; still
 waiting on Y"` records the review date and reasoning without a retry. Block/review timestamps do not invent old
 history. Check `rescue` after every completion and before reporting that there is nothing left to do.
+A review newer than a finished prerequisite (or ripple) silences that signal, so cards are not re-reviewed in a loop.
+
+Other worktrees' claims and blocks hide a ticket from `next` only while that worktree is unmerged and has not been
+superseded by a newer `Reviewed:` here; a quiet claim there is reported as `stale-claim`. `issue worktrees` lists
+each checkout (merged?, uncommitted files, what it holds) and names cleanup candidates for `npm run worktree-clean`.
+An empty `next` always prints why each card was skipped.
 
 Add a game: `npm run new-port`, or one entry in `projects.json` (id, name, aliases, candidate paths, lanes, prompt
 rules, models). Tests: `npm test` (parser, timeline, CLI, audit, search, scaffold, and the real ledgers).

@@ -76,11 +76,13 @@ export function audit (items, { md = '', now = Date.now(), elsewhere = new Map()
     if (it.state !== 'done') continue
     const t = at(it.date, it.time)
     if (!t || now - t > recentHours * 3600_000) continue
-    const dependents = tickets.filter(x => live(x) && x.needs.includes(it.id))
+    // A card reviewed after this one finished has already absorbed the ripple; asking again only loops reviews.
+    const unreviewed = x => !(Date.parse(x.reviewed ?? '') > t)
+    const dependents = tickets.filter(x => live(x) && x.needs.includes(it.id) && unreviewed(x))
     const ready = dependents.filter(x => x.needs.every(done)).map(x => x.id)
     const still = dependents.filter(x => !x.needs.every(done)).map(x => x.id)
     const stage = stageOf.get(it.id)
-    const mates = stage ? stage.tickets.filter(x => x.id !== it.id && x.state !== 'done' && x.state !== 'dropped' && !dependents.some(d => d.id === x.id)).map(x => x.id) : []
+    const mates = stage ? stage.tickets.filter(x => x.id !== it.id && x.state !== 'done' && x.state !== 'dropped' && unreviewed(byId.get(x.id) ?? x) && !dependents.some(d => d.id === x.id)).map(x => x.id) : []
     if (ready.length) add('check', 'ripple-ready', it.id, `${it.id} done -> now ready: ${ready.join(', ')} (re-read their Gate against what ${it.id} found)`)
     if (still.length) add('info', 'ripple-waiting', it.id, `${it.id} done -> ${still.join(', ')} still wait on other tickets`)
     if (mates.length && stage) {
@@ -116,6 +118,14 @@ export function audit (items, { md = '', now = Date.now(), elsewhere = new Map()
   }
   for (const [id, c] of elsewhere) {
     if (c.state === 'done') add('check', 'done-elsewhere', id, `${id} is DONE in worktree ${c.worktree} but not merged here`)
+    // A quiet claim in another worktree hides the ticket from `next` here just as a local one does.
+    if (c.state !== 'claimed') continue
+    const progAt = Date.parse(c.progressAt ?? '')
+    const last = Math.max(at(c.date, c.time) ?? 0, Number.isFinite(progAt) ? progAt : 0)
+    if (last && now - last > staleHours * 3600_000) {
+      add('check', 'stale-claim', id, `${id} claimed by ${c.owner ?? '?'} with no update for ${Math.floor((now - last) / 3600_000)} h (worktree ${c.worktree})`,
+        `npm run issue -- show ${id}, then check worktree ${c.worktree}; if that agent is gone, record its result here (block or note) so next offers ${id} again`)
+    }
   }
   for (const g of ghosts) add('info', 'ghost', g.id, `${g.id} exists only in worktree ${g.worktree} (${g.state})`)
 
