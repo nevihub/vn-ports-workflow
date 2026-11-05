@@ -1,7 +1,7 @@
 {
   "note": "Last local VN-Ports commits synced here by scripts/public-sync.mjs",
   "sources": {
-    "root": "25ad8184e7f8695a0734060a85b06ceef9855321",
+    "root": "7f65da8347ab3beb3da2e708f85bd987617766c9",
     "board": "70ca44ca6f197b92c7a038f618ecdad35b968e30"
   },
   "held": {
@@ -12,13 +12,13 @@
       "file": "knowledge/README.md",
       "since": "81795439bba3762dfa0f0d5af2fe826a942b7325",
       "why": "new text contains a local drive path",
-      "review": "git -C \".\" diff 8179543 25ad818 -- \"knowledge/README.md\""
+      "review": "git -C \".\" diff 8179543 7f65da8 -- \"knowledge/README.md\""
     },
     "lesson:78fbbace857a": {
       "kind": "lesson",
       "why": "lesson not marked proven (LEAD/STRONG/untested/not yet/probably...)",
       "label": "- 2026-10-31 [sakura] (touch, export, artemis,...",
-      "review": "knowledge/LESSONS.md line 348 at root 25ad818"
+      "review": "knowledge/LESSONS.md line 348 at root 7f65da8"
     }
   }
 }
