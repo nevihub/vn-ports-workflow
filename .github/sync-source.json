@@ -1,8 +1,8 @@
 {
   "note": "Last local VN-Ports commits synced here by scripts/public-sync.mjs",
   "sources": {
-    "root": "2b8033139cb71fa2062fb406c51fa0191bc2fccf",
-    "board": "716d9fb1dfdb6736779f2a73ad3b803c8649a691"
+    "root": "3a4a99816972c4d9f6a56302bc8e991f68c6086d",
+    "board": "c9549ffd8e0c5237a0dc695811f29787bfeb3f66"
   },
   "held": {
     "knowledge/NEW-PC-SETUP.md": {
@@ -12,7 +12,7 @@
       "file": "knowledge/NEW-PC-SETUP.md",
       "since": "e142a4bfa1d53db97488f2ec1189c79c2b7df1ff",
       "why": "the public copy is missing (removed there or never synced)",
-      "review": "git -C \".\" diff e142a4b 2b80331 -- \"knowledge/NEW-PC-SETUP.md\""
+      "review": "git -C \".\" diff e142a4b 3a4a998 -- \"knowledge/NEW-PC-SETUP.md\""
     },
     "knowledge/README.md": {
       "kind": "file",
@@ -21,13 +21,13 @@
       "file": "knowledge/README.md",
       "since": "81795439bba3762dfa0f0d5af2fe826a942b7325",
       "why": "new text contains a local drive path",
-      "review": "git -C \".\" diff 8179543 2b80331 -- \"knowledge/README.md\""
+      "review": "git -C \".\" diff 8179543 3a4a998 -- \"knowledge/README.md\""
     },
     "lesson:78fbbace857a": {
       "kind": "lesson",
       "why": "lesson not marked proven (LEAD/STRONG/untested/not yet/probably...)",
       "label": "- 2026-10-31 [sakura] (touch, export, artemis,...",
-      "review": "knowledge/LESSONS.md line 348 at root 2b80331"
+      "review": "knowledge/LESSONS.md line 348 at root 3a4a998"
     }
   }
 }

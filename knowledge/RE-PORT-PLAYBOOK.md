@@ -69,7 +69,7 @@ file under `scripts/` or `tools/`.
 | T6 | `npm run health` | game folder | S1-S6 | viewer self-test, firewall, unit tests, decompile count, type check | S |
 | T7 | `npm run native-query -- <addr>` | game folder | S2 | cached Ghidra decompile of the native binary: the independent second path | P (method), S (setup) |
 | T8 | `wsl -d <distro> -- sh scripts/scn.sh decompile` | game folder (WSL) | S1 | every scenario and system program decompiled into the ignored `re/` folder | B |
-| T9 | `uv run --with capstone --with pefile python -I tools/x86dis.py <exe> dis\|func\|xref\|find ...` | game folder | S0-S2 | fast disassembly and string search in the native binary | B |
+| T9 | `uv run --with capstone==5.0.9 --with pefile==2024.8.26 python -I tools/x86dis.py <exe> dis\|func\|xref\|find ...` | game folder | S0-S2 | fast disassembly and string search in the native binary | B |
 | T10 | `wsl -d <distro> -- sh scripts/openbgi.sh` | game folder (WSL) | S2 | the pinned reference engine built for tests and for the browser route | S (route A) |
 | T11 | `npm run build:web` | game folder | S3-S6 | static blocks and the engine copied into the public folder | S |
 | T12 | `npm run proof:scene` | game folder | S2-S4 | boot, press START, first scene, in a headless browser, with budget metrics | S |
