@@ -211,7 +211,7 @@ test('complete audit assembles ledger, oracle, worktree, document-size, and reco
     writeFileSync(oracleFile, JSON.stringify({ projects: { [project.id]: { lockedAt: '2026-10-01T00:00:00.000Z', by: 'user', files: {} } } }))
     const state = loadProjectState(project, { root, fresh: true, now })
     const items = [
-      { id: 'E1', title: 'Blocked fixture', lane: 'E', state: 'blocked', plain: 'fixture', gate: 'fixture', needs: [], related: ['E2'], unblock: 'review the related result', blockedAt: '2026-10-19T10:00:00.000Z', notes: [], topics: [], hasStatus: true },
+      { id: 'E1', title: 'Blocked fixture', lane: 'E', state: 'blocked', plain: 'fixture', gate: 'fixture', needs: ['E2'], related: [], unblock: 'review the finished prerequisite', blockedAt: '2026-10-19T10:00:00.000Z', notes: [], topics: [], hasStatus: true },
       { id: 'E2', title: 'Done fixture', lane: 'E', state: 'done', plain: 'fixture', gate: 'fixture', needs: [], date: '2026-10-20', time: '10:00', notes: [], hasStatus: true },
       { id: 'E3', title: 'Claimed fixture', lane: 'E', state: 'claimed', owner: 'fixture', plain: 'fixture', gate: 'fixture', needs: [], date: '2026-10-20', time: '06:00', notes: [], hasStatus: true, proof: null },
     ]

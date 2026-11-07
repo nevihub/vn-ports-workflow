@@ -23,8 +23,9 @@ export function recoveryCards (items, { messages = [], lessons = [], now = Date.
     // Once a review postdates the last prerequisite, finished prerequisites alone are no reason to review again.
     if (dependencies.length && dependencies.every(id => byId.get(id).state === 'done') &&
       (!since || dependencies.some(id => finished(byId.get(id)) > since))) signals.push('The named prerequisites are finished. Review the remaining gate before reopening.')
-    if (since && linked.some(id => byId.get(id).state === 'done' && finished(byId.get(id)) > since)) signals.push('A related card finished since the last review.')
-    if (since && matchingMessages.some(m => m.at > since)) signals.push('There are newer agent messages to check.')
+    // Optional Related cards finishing, and agents' own blocked/progress chatter, are not new evidence: they only
+    // produced "reviewed, still blocked" notes (user, 2026-11-06). Only found/question/handoff messages count.
+    if (since && matchingMessages.some(m => m.at > since && ['found', 'question', 'handoff'].includes(m.kind))) signals.push('There are newer agent findings to check.')
     if (since && matchingLessons.some(l => l.date > new Date(since).toISOString().slice(0, 10))) signals.push('There is newer shared knowledge to check.')
     if (since && now - since >= 7 * 86400_000) signals.push('This card has not been reviewed for at least a week.')
     return { id: it.id, unblock: it.unblock ?? 'Record the missing evidence or change that would allow another attempt.',
