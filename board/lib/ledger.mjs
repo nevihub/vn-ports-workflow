@@ -131,7 +131,7 @@ export function elsewhereClaims (mainItems, sources) {
   const claims = new Map()
   const ghosts = []
   for (const src of sources) {
-    if (!src?.md) continue
+    if (!src?.md || src.merged) continue
     let items
     try { items = src.items ?? parse(src.md) } catch { continue }
     const lines = src.md.split('\n')
@@ -140,7 +140,10 @@ export function elsewhereClaims (mainItems, sources) {
       if (it.state !== 'claimed' && it.state !== 'blocked' && it.state !== 'done') continue
       const main = byId.get(it.id)
       if (main) {
-        if (main.state === 'open') {
+        // A review here that postdates every ledger change in the worktree supersedes its old claim or block.
+        const there = Math.max(...[it.reviewed, it.blockedAt, it.progressAt, it.date && `${it.date}T${it.time ?? '00:00'}:00`]
+          .map(v => Date.parse(v ?? '') || 0))
+        if (main.state === 'open' && !(Date.parse(main.reviewed ?? '') > there)) {
           claims.set(it.id, { state: it.state, owner: it.owner, date: it.date, time: it.time, commit: it.commit,
             note: it.note, reason: it.reason, progress: it.progress, percent: it.percent, doing: it.doing,
             progressAt: it.progressAt,
