@@ -36,6 +36,27 @@ export function projectGoal (state, { laneOrder = Object.keys(state.project?.lan
     playable: tl.playable, overall: tl.overall }
 }
 
+// A non-U card can still wait on the user (a re-lock, an approval, a used-up model quota). Those hide in Unblock/Eta/
+// Status text, so a goal loop never saw them and kept re-checking blocked cards instead of asking.
+const ASKS_USER = /\b(user|owner)[- ]only\b|--by user|\boracle-lock\b|\bquota\b|usage limits?\b|\b(user|owner) (approval|approves|reviews|decides|re-?locks?|runs|must)\b|^(the )?(user|owner)\b/i
+
+export function userAsks (items) {
+  const open = i => i.state !== 'done' && i.state !== 'dropped'
+  const byId = new Map(items.map(i => [i.id, i]))
+  const pending = i => i.needs.filter(n => byId.get(n) && byId.get(n).state !== 'done')
+  const now = []; const later = []
+  for (const i of items.filter(open)) {
+    if (i.lane === 'U') {
+      const wait = pending(i)
+      ;(wait.length ? later : now).push({ id: i.id, ask: i.plain ?? i.title, after: wait })
+      continue
+    }
+    const why = [i.unblock, i.eta, i.reason].find(t => t && ASKS_USER.test(t))
+    if (why) now.push({ id: i.id, ask: why })
+  }
+  return { now, later }
+}
+
 export function formatGoal (goal, { handoff = 'HANDOFF.md' } = {}) {
   const lines = []
   const tl = goal.timeline
@@ -47,9 +68,17 @@ export function formatGoal (goal, { handoff = 'HANDOFF.md' } = {}) {
   lines.push(`You are here: [${here.id}] ${here.title} - ${here.percent}%`)
   if (here.plain) lines.push(`  ${here.plain}`)
   for (const t of here.tickets) lines.push(`  ${t.id.padEnd(5)} ${t.state.padEnd(8)} ${t.plain ?? t.title ?? ''}`)
-  const user = goal.effective.filter(i => i.lane === 'U' && i.state !== 'done' && i.state !== 'dropped')
-  if (user.length) lines.push(`Waiting on the user: ${user.map(i => i.id).join(', ')}`)
+  const asks = userAsks(goal.effective)
+  const cut = t => (t.length > 160 ? `${t.slice(0, 157)}...` : t)
+  if (asks.now.length) {
+    lines.push('Waiting on the user:')
+    for (const a of asks.now) lines.push(`  ${a.id.padEnd(5)} ${cut(a.ask)}`)
+  }
+  if (asks.later.length) lines.push(`User checks for later (not ready yet): ${asks.later.map(a => `${a.id} after ${a.after.join(',')}`).join(' · ')}`)
   lines.push(`Ready to start: ${goal.ready.length ? goal.ready.map(i => i.id).join(', ') : 'nothing'}`)
+  if (!goal.ready.length) {
+    lines.push('-> No agent work can start. End the goal/loop now and tell the user, in plain words, each "Waiting on the user" line above.')
+  }
   if (goal.combos.combos.length) {
     lines.push('Run together (one writer per folder; * = give it its own worktree + branch):')
     for (const c of goal.combos.combos) lines.push(`  ${c.size} agents: ${c.ids.map(id => (c.needsWorktree.includes(id) ? `${id}*` : id)).join(' + ')}`)
@@ -57,7 +86,8 @@ export function formatGoal (goal, { handoff = 'HANDOFF.md' } = {}) {
   if (goal.combos.moreByLane.length) lines.push(`Also ready, same folder as a pick above (one each, own checkout): ${goal.combos.moreByLane.map(g => `${g.ids.join(' ')} (${g.lane})`).join(' · ')}`)
   if (goal.order.length) {
     lines.push('Best order to run (top to bottom; one writer per folder):')
-    goal.order.forEach((s, i) => lines.push(`  ${i + 1}. ${s.action} ${s.id} - ${s.why}`))
+    const waits = new Set(asks.now.map(a => a.id))
+    goal.order.forEach((s, i) => lines.push(`  ${i + 1}. ${s.action} ${s.id} - ${s.why}${waits.has(s.id) ? ' (waiting on the user)' : ''}`))
   }
   return lines.join('\n')
 }

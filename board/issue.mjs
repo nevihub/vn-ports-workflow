@@ -15,7 +15,7 @@ import { release as releaseClaim, tryClaim } from './lib/claim-lock.mjs'
 import { timeline } from './lib/ledger.mjs'
 import { lock as lockOracles } from './lib/oracles.mjs'
 import { loadProjects } from './lib/projects.mjs'
-import { completeAudit, formatGoal, loadProjectState, projectGoal } from './lib/project-state.mjs'
+import { completeAudit, formatGoal, loadProjectState, projectGoal, userAsks } from './lib/project-state.mjs'
 import { ruleCard } from './lib/rules.mjs'
 import { worktrees } from './lib/worktrees.mjs'
 
@@ -200,7 +200,12 @@ function nextCommand () {
   const stageName = id => { const i = stageOf.get(id); return i === undefined ? 'no stage' : tl.stages[i].id }
   if (!ready.length) {
     console.log(`nothing ${agent ? `${agent} may ` : ''}start right now${str(flags.lane) ? ` in lane ${str(flags.lane).toUpperCase()}` : ''}.`)
-    console.log('-> stop the loop and report: what is blocked, what waits on the user, what needs another agent.')
+    console.log('-> stop the loop (end any goal) and report: what is blocked, what waits on the user, what needs another agent.')
+    const asks = userAsks(items)
+    if (asks.now.length) {
+      console.log('waiting on the user (tell them each one in plain words):')
+      for (const a of asks.now) console.log(`  ${a.id.padEnd(5)} ${a.ask}`)
+    }
   } else {
     const [top, ...rest] = ready
     console.log(`next: ${top.id}  ${top.title}`)
