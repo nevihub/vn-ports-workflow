@@ -12,6 +12,7 @@
     "worktree-clean": "node worktree-clean.mjs",
     "maintainer-sweep": "node maintainer-sweep.mjs",
     "kb": "node kb.mjs",
+    "tokens": "node tokens.mjs",
     "new-port": "node new-port.mjs",
     "test": "node --test tests/*.test.mjs"
   }

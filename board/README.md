@@ -31,6 +31,12 @@ extension can send arbitrary headers — so the `x-board` header is **not** a se
 - **Tickets** (per game): columns with model tags, live progress bars, "next up" / "ready" / "after E1" chips and
   copyable handoff prompts that end in the work loop.
 
+## Token report (`npm run tokens`, from `board\`)
+Read-only report on the OpenCode session database (`..\..\.local\share\opencode\opencode.db` on Windows):
+requests, uncached vs cached input, output and reasoning, a cost-weighted total, average prompt size, share of
+requests over 128K, repeated file reads, big cache misses, and tickets closed per game with tokens per ticket.
+`npm run tokens -- --days 30`, `--since 2026-10-16`, or `--json`. It never writes to the database.
+
 ## The ticket CLI (`issue.mjs`; `npm run issue -- help` in any game)
 Each game's `npm run issue` runs this file on that checkout's ledger (`--project <id> --root <checkout>`), so a
 worktree edits its own copy. Library: `lib/backlog.mjs` (writers, `rankNext`), parser `lib/ledger.mjs` (the format),
@@ -124,6 +130,12 @@ not reviewed for a week. They never reopen a ticket or execute instructions from
 lead and explicitly reopens only when the blocker is resolved. Otherwise `issue reviewed E10 "checked X; still
 waiting on Y"` records the review date and reasoning without a retry. Block/review timestamps do not invent old
 history. Check `rescue` after every completion and before reporting that there is nothing left to do.
+A review newer than a finished prerequisite (or ripple) silences that signal, so cards are not re-reviewed in a loop.
+
+Other worktrees' claims and blocks hide a ticket from `next` only while that worktree is unmerged and has not been
+superseded by a newer `Reviewed:` here; a quiet claim there is reported as `stale-claim`. `issue worktrees` lists
+each checkout (merged?, uncommitted files, what it holds) and names cleanup candidates for `npm run worktree-clean`.
+An empty `next` always prints why each card was skipped.
 
 Add a game: `npm run new-port`, or one entry in `projects.json` (id, name, aliases, candidate paths, lanes, prompt
 rules, models). Tests: `npm test` (parser, timeline, CLI, audit, search, scaffold, and the real ledgers).

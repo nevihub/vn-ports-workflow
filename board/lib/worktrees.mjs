@@ -5,6 +5,14 @@ import { join, resolve } from 'node:path'
 import { evictParsedLedger, parsedLedger } from './ledger-cache.mjs'
 
 const norm = p => p.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase()
+const quiet = { windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] }
+// Merged: the worktree's HEAD is already in this checkout and its ledger has no uncommitted edit, so every ledger
+// line it holds is in (or was superseded by) this ledger. Its old claims and blocks must not hide tickets here.
+const isMerged = (root, dir, head) => {
+  if (!head) return false
+  try { execFileSync('git', ['merge-base', '--is-ancestor', head, 'HEAD'], { cwd: root, ...quiet }) } catch { return false }
+  try { return !execFileSync('git', ['status', '--porcelain', '--', 'docs/BACKLOG.md'], { cwd: dir, encoding: 'utf8', ...quiet }).trim() } catch { return false }
+}
 const cache = new Map()
 const ledgerPaths = new Map()
 
@@ -42,8 +50,9 @@ export function worktrees (root, { maxAgeMs = 15000, now = Date.now() } = {}) {
     // A worktree named like the main folder (~/.codex/worktrees/e8-hub-hover/Subahibi) is called by its parent.
     const parts = dir.split('/').filter(Boolean)
     const name = parts.length > 1 && norm(parts.at(-1)) === norm(root).split('/').pop() ? parts.at(-2) : parts.at(-1)
+    const head = block.match(/^HEAD ([0-9a-f]+)$/m)?.[1] ?? null
     const ledgerPath = join(dir, 'docs', 'BACKLOG.md')
-    sources.push({ name, dir, branch, ledgerPath, md: null, items: null })
+    sources.push({ name, dir, branch, head, merged: isMerged(root, dir, head), ledgerPath, md: null, items: null })
   }
   updateLedgerIndex(rootKey, sources)
   const res = { at: now, porcelain, sources: refreshSources(sources), commits }

@@ -136,7 +136,8 @@ export function collect (project, { now = Date.now() } = {}) {
     out.worktree = claim ? claim.worktree : (it.state === 'claimed' ? claimWorktree(it.owner, wt.porcelain) : null)
     out.branch = claim?.branch ?? null
     out.notMerged = Boolean(claim)
-    out.v = fnv(raw.join('\n') + (claim ? `|x:${out.state}|${out.owner}` : '') + (out.staleHours ? `|s${out.staleHours}` : ''))
+    // A worktree's progress/block lines change without touching this ledger; hash them too or the card never redraws.
+    out.v = fnv(raw.join('\n') + (claim ? `|x:${out.state}|${out.owner}|${claim.percent ?? ''}|${claim.progressAt ?? ''}|${claim.blockedAt ?? ''}|${claim.reason ?? ''}` : '') + (out.staleHours ? `|s${out.staleHours}` : ''))
     return out
   })
   for (const g of ghosts) {

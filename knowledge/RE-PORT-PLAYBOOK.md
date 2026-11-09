@@ -50,7 +50,8 @@ Steps 3-5 are the first three playbook stages that the U4 test checks.
   and the change it implies.
 - Timebox: after about an hour without an answer, write `// shortcut: <limit>, <when to upgrade>` with the best guess,
   list it in the handoff, and move on.
-- Never let the native game take over the screen or the focus while testing (headless runs only).
+- Running the native game on screen (focused or not) is allowed for reference capture; use a hash-checked copy,
+  never the install (user, 2026-10-30; see root `AGENTS.md`).
 
 ## 3. Tools inventory
 
@@ -68,7 +69,7 @@ file under `scripts/` or `tools/`.
 | T6 | `npm run health` | game folder | S1-S6 | viewer self-test, firewall, unit tests, decompile count, type check | S |
 | T7 | `npm run native-query -- <addr>` | game folder | S2 | cached Ghidra decompile of the native binary: the independent second path | P (method), S (setup) |
 | T8 | `wsl -d <distro> -- sh scripts/scn.sh decompile` | game folder (WSL) | S1 | every scenario and system program decompiled into the ignored `re/` folder | B |
-| T9 | `uv run --with capstone --with pefile python -I tools/x86dis.py <exe> dis\|func\|xref\|find ...` | game folder | S0-S2 | fast disassembly and string search in the native binary | B |
+| T9 | `uv run --with capstone==5.0.9 --with pefile==2024.8.26 python -I tools/x86dis.py <exe> dis\|func\|xref\|find ...` | game folder | S0-S2 | fast disassembly and string search in the native binary | B |
 | T10 | `wsl -d <distro> -- sh scripts/openbgi.sh` | game folder (WSL) | S2 | the pinned reference engine built for tests and for the browser route | S (route A) |
 | T11 | `npm run build:web` | game folder | S3-S6 | static blocks and the engine copied into the public folder | S |
 | T12 | `npm run proof:scene` | game folder | S2-S4 | boot, press START, first scene, in a headless browser, with budget metrics | S |
@@ -82,6 +83,30 @@ file under `scripts/` or `tools/`.
 | T20 | `npm run kb -- "<words>"` | VN-Ports root (or `board\`) | all | search of shared knowledge and every game's decisions and handoffs | P |
 | T21 | `npm run status` · `npm run resume` · `npm run preflight` | game folder | all | one-screen status; session start; servers and tools present | S |
 | T22 | `npm run board` | `board\` | all | the live board for every game | S |
+
+## 3a. REA host limits **[P]**
+
+Verified 2026-11-02 on Mahoyo; read before planning native work.
+
+- **Windows REA is a P0 build.** `open_binary` admits native x86/x64 PE applications/DLLs and explicitly selected raw
+  6502 only. Any ELF, including ARM64, is refused at once with `target_format_unsupported`; the MCP registration has
+  the same limit. Do not plan Switch or Linux binary work around it.
+- **PC executables still work on Windows.** The installed PC reference (`WoH.exe`, x86-64 PE) opens directly:
+  image base `0x140000000`, 5,766 procedures and 7,923 strings. Imports are read-only; the install is never modified.
+  This is the cheapest supported path for engine and format questions.
+- **ELF and ARM64 (Switch NSO, Linux binaries):** use the Linux installation in WSL Ubuntu-26.04. Ghidra 12.1.4 is at
+  `/home/nevi/tools/ghidra_12.1.4_PUBLIC`, `GHIDRA_INSTALL_DIR` is exported from `~/.bashrc`, and the CLI is
+  `npx -y rea-agents@6.5.0`. Verified on a 6.5 MB AArch64 ELF: image base `0x7100000000`, 3,670 procedures and
+  3,041 strings in about 72 s.
+- **Every CLI query re-imports the target** (about 75-100 s on that ELF). Keep a private copy under the WSL home
+  (`~/work/<game>/`) rather than `/mnt`, run queries in the background, and use `--snapshot <file>` to bind later
+  queries to one analysis.
+- **Default analysis misses hand-decoded helpers.** Supply `REA_GHIDRA_SEED_FILE` with `0x<address><TAB>function`
+  lines (kinds: function, code, label). 26 seeds reproduced Mahoyo's hand-decoded set.
+- **MCP works over WSL but is heavy:** its `tools/list` is about 3 MB. Use the CLI for one-off questions; wire the
+  server only when a whole session needs it.
+- **Output rules do not change:** analysis, decompiled text and tool logs stay private. Cite private paths and counts;
+  never commit game bytes or decompiled code.
 
 ## 4. Execution protocol **[P]**
 
