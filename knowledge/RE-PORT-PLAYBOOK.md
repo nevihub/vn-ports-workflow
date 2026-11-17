@@ -122,7 +122,7 @@ Verified 2026-11-02 on Mahoyo; read before planning native work.
 - **Commits.** Local commits only. Run the firewall before every commit; each agent adds its own co-author line.
 - **Approvals.** An agent never does these alone: a push to any remote; a deploy or publish; game content on a new site
   or domain; anything that costs money; destroying user data or any irreversible step outside the repo; changing a
-  locked checker (the user re-locks it); accepting a licence or consent screen for a third-party service; a direction no
+  locked checker (after the user approves, the agent re-locks it); accepting a licence or consent screen for a third-party service; a direction no
   default covers (ask once, recommended option first). User (U) tickets are never started by an agent.
 
 ## 5. BGI/Ethornell module **[B]**
