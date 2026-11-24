@@ -1,8 +1,8 @@
 {
   "note": "Last local VN-Ports commits synced here by scripts/public-sync.mjs",
   "sources": {
-    "root": "74f0613a754e1d02beb7462d73d4e7d9ea073ec6",
-    "board": "60c2bdfa95f29bb69d62349b5b8c326d00fca759"
+    "root": "6a118780e7b69a8324a7b46bb64b8f25b339e6ee",
+    "board": "fa4b214bed29f292966a7adc8fa16775c924afa0"
   },
   "held": {
     "board/board.mjs": {
@@ -12,7 +12,7 @@
       "file": "board.mjs",
       "since": "c9549ffd8e0c5237a0dc695811f29787bfeb3f66",
       "why": "conflicts with public-only edits; merge by hand",
-      "review": "git -C \"board\" diff c9549ff 60c2bdf -- \"board.mjs\""
+      "review": "git -C \"board\" diff c9549ff fa4b214 -- \"board.mjs\""
     },
     "board/issue.mjs": {
       "kind": "file",
@@ -21,7 +21,7 @@
       "file": "issue.mjs",
       "since": "c9549ffd8e0c5237a0dc695811f29787bfeb3f66",
       "why": "conflicts with public-only edits; merge by hand",
-      "review": "git -C \"board\" diff c9549ff 60c2bdf -- \"issue.mjs\""
+      "review": "git -C \"board\" diff c9549ff fa4b214 -- \"issue.mjs\""
     },
     "board/lib/audit.mjs": {
       "kind": "file",
@@ -30,7 +30,7 @@
       "file": "lib/audit.mjs",
       "since": "c9549ffd8e0c5237a0dc695811f29787bfeb3f66",
       "why": "conflicts with public-only edits; merge by hand",
-      "review": "git -C \"board\" diff c9549ff 60c2bdf -- \"lib/audit.mjs\""
+      "review": "git -C \"board\" diff c9549ff fa4b214 -- \"lib/audit.mjs\""
     },
     "board/lib/ledger.mjs": {
       "kind": "file",
@@ -39,7 +39,7 @@
       "file": "lib/ledger.mjs",
       "since": "c9549ffd8e0c5237a0dc695811f29787bfeb3f66",
       "why": "conflicts with public-only edits; merge by hand",
-      "review": "git -C \"board\" diff c9549ff 60c2bdf -- \"lib/ledger.mjs\""
+      "review": "git -C \"board\" diff c9549ff fa4b214 -- \"lib/ledger.mjs\""
     },
     "board/tests/lock-queue.test.mjs": {
       "kind": "file",
@@ -48,7 +48,7 @@
       "file": "tests/lock-queue.test.mjs",
       "since": "4a1795bfd66eec5a4f67edb331e7f9e90af5a6b4",
       "why": "new text contains a local drive path",
-      "review": "git -C \"board\" diff 4a1795b 60c2bdf -- \"tests/lock-queue.test.mjs\""
+      "review": "git -C \"board\" diff 4a1795b fa4b214 -- \"tests/lock-queue.test.mjs\""
     },
     "knowledge/WORKFLOW-NOTES.md": {
       "kind": "file",
@@ -57,7 +57,7 @@
       "file": "knowledge/WORKFLOW-NOTES.md",
       "since": "3a4a99816972c4d9f6a56302bc8e991f68c6086d",
       "why": "new local file; add it by hand if it is reusable",
-      "review": "git -C \".\" diff 3a4a998 74f0613 -- \"knowledge/WORKFLOW-NOTES.md\""
+      "review": "git -C \".\" diff 3a4a998 6a11878 -- \"knowledge/WORKFLOW-NOTES.md\""
     },
     "knowledge/DEFAULTS.md": {
       "kind": "file",
@@ -66,7 +66,7 @@
       "file": "knowledge/DEFAULTS.md",
       "since": "3a4a99816972c4d9f6a56302bc8e991f68c6086d",
       "why": "conflicts with public-only edits; merge by hand",
-      "review": "git -C \".\" diff 3a4a998 74f0613 -- \"knowledge/DEFAULTS.md\""
+      "review": "git -C \".\" diff 3a4a998 6a11878 -- \"knowledge/DEFAULTS.md\""
     },
     "knowledge/NEW-PC-SETUP.md": {
       "kind": "file",
@@ -75,7 +75,7 @@
       "file": "knowledge/NEW-PC-SETUP.md",
       "since": "e142a4bfa1d53db97488f2ec1189c79c2b7df1ff",
       "why": "the public copy is missing (removed there or never synced)",
-      "review": "git -C \".\" diff e142a4b 74f0613 -- \"knowledge/NEW-PC-SETUP.md\""
+      "review": "git -C \".\" diff e142a4b 6a11878 -- \"knowledge/NEW-PC-SETUP.md\""
     },
     "knowledge/TEMPLATES.md": {
       "kind": "file",
@@ -84,7 +84,7 @@
       "file": "knowledge/TEMPLATES.md",
       "since": "3a4a99816972c4d9f6a56302bc8e991f68c6086d",
       "why": "conflicts with public-only edits; merge by hand",
-      "review": "git -C \".\" diff 3a4a998 74f0613 -- \"knowledge/TEMPLATES.md\""
+      "review": "git -C \".\" diff 3a4a998 6a11878 -- \"knowledge/TEMPLATES.md\""
     },
     "knowledge/README.md": {
       "kind": "file",
@@ -93,70 +93,16 @@
       "file": "knowledge/README.md",
       "since": "81795439bba3762dfa0f0d5af2fe826a942b7325",
       "why": "new text contains a local drive path",
-      "review": "git -C \".\" diff 8179543 74f0613 -- \"knowledge/README.md\""
+      "review": "git -C \".\" diff 8179543 6a11878 -- \"knowledge/README.md\""
     },
-    "board/lib/async-pool.mjs": {
+    "board/lib/channel.mjs": {
       "kind": "file",
       "source": "board",
       "to": "board/",
-      "file": "lib/async-pool.mjs",
-      "since": "20892fe0ab884573345526aca7cff454848d4fe7",
+      "file": "lib/channel.mjs",
+      "since": "60c2bdfa95f29bb69d62349b5b8c326d00fca759",
       "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
-      "review": "git -C \"board\" diff 20892fe 60c2bdf -- \"lib/async-pool.mjs\""
-    },
-    "board/lib/oracles.mjs": {
-      "kind": "file",
-      "source": "board",
-      "to": "board/",
-      "file": "lib/oracles.mjs",
-      "since": "20892fe0ab884573345526aca7cff454848d4fe7",
-      "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
-      "review": "git -C \"board\" diff 20892fe 60c2bdf -- \"lib/oracles.mjs\""
-    },
-    "board/lib/project-state.mjs": {
-      "kind": "file",
-      "source": "board",
-      "to": "board/",
-      "file": "lib/project-state.mjs",
-      "since": "c9549ffd8e0c5237a0dc695811f29787bfeb3f66",
-      "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
-      "review": "git -C \"board\" diff c9549ff 60c2bdf -- \"lib/project-state.mjs\""
-    },
-    "board/lib/worktrees.mjs": {
-      "kind": "file",
-      "source": "board",
-      "to": "board/",
-      "file": "lib/worktrees.mjs",
-      "since": "c9549ffd8e0c5237a0dc695811f29787bfeb3f66",
-      "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
-      "review": "git -C \"board\" diff c9549ff 60c2bdf -- \"lib/worktrees.mjs\""
-    },
-    "board/README.md": {
-      "kind": "file",
-      "source": "board",
-      "to": "board/",
-      "file": "README.md",
-      "since": "4a1795bfd66eec5a4f67edb331e7f9e90af5a6b4",
-      "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
-      "review": "git -C \"board\" diff 4a1795b 60c2bdf -- \"README.md\""
-    },
-    "board/board-page.html": {
-      "kind": "file",
-      "source": "board",
-      "to": "board/",
-      "file": "board-page.html",
-      "since": "c9549ffd8e0c5237a0dc695811f29787bfeb3f66",
-      "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
-      "review": "git -C \"board\" diff c9549ff 60c2bdf -- \"board-page.html\""
-    },
-    "board/lib/lease.mjs": {
-      "kind": "file",
-      "source": "board",
-      "to": "board/",
-      "file": "lib/lease.mjs",
-      "since": "4a1795bfd66eec5a4f67edb331e7f9e90af5a6b4",
-      "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
-      "review": "git -C \"board\" diff 4a1795b 60c2bdf -- \"lib/lease.mjs\""
+      "review": "git -C \"board\" diff 60c2bdf fa4b214 -- \"lib/channel.mjs\""
     },
     "board/lib/lock-queue.mjs": {
       "kind": "file",
@@ -165,7 +111,88 @@
       "file": "lib/lock-queue.mjs",
       "since": "4a1795bfd66eec5a4f67edb331e7f9e90af5a6b4",
       "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
-      "review": "git -C \"board\" diff 4a1795b 60c2bdf -- \"lib/lock-queue.mjs\""
+      "review": "git -C \"board\" diff 4a1795b fa4b214 -- \"lib/lock-queue.mjs\""
+    },
+    "board/lib/oracles.mjs": {
+      "kind": "file",
+      "source": "board",
+      "to": "board/",
+      "file": "lib/oracles.mjs",
+      "since": "20892fe0ab884573345526aca7cff454848d4fe7",
+      "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
+      "review": "git -C \"board\" diff 20892fe fa4b214 -- \"lib/oracles.mjs\""
+    },
+    "board/tests/wave2-infra.test.mjs": {
+      "kind": "file",
+      "source": "board",
+      "to": "board/",
+      "file": "tests/wave2-infra.test.mjs",
+      "since": "60c2bdfa95f29bb69d62349b5b8c326d00fca759",
+      "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
+      "review": "git -C \"board\" diff 60c2bdf fa4b214 -- \"tests/wave2-infra.test.mjs\""
+    },
+    "board/tokens.mjs": {
+      "kind": "file",
+      "source": "board",
+      "to": "board/",
+      "file": "tokens.mjs",
+      "since": "60c2bdfa95f29bb69d62349b5b8c326d00fca759",
+      "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
+      "review": "git -C \"board\" diff 60c2bdf fa4b214 -- \"tokens.mjs\""
+    },
+    "board/lib/async-pool.mjs": {
+      "kind": "file",
+      "source": "board",
+      "to": "board/",
+      "file": "lib/async-pool.mjs",
+      "since": "20892fe0ab884573345526aca7cff454848d4fe7",
+      "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
+      "review": "git -C \"board\" diff 20892fe fa4b214 -- \"lib/async-pool.mjs\""
+    },
+    "board/lib/project-state.mjs": {
+      "kind": "file",
+      "source": "board",
+      "to": "board/",
+      "file": "lib/project-state.mjs",
+      "since": "c9549ffd8e0c5237a0dc695811f29787bfeb3f66",
+      "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
+      "review": "git -C \"board\" diff c9549ff fa4b214 -- \"lib/project-state.mjs\""
+    },
+    "board/lib/worktrees.mjs": {
+      "kind": "file",
+      "source": "board",
+      "to": "board/",
+      "file": "lib/worktrees.mjs",
+      "since": "c9549ffd8e0c5237a0dc695811f29787bfeb3f66",
+      "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
+      "review": "git -C \"board\" diff c9549ff fa4b214 -- \"lib/worktrees.mjs\""
+    },
+    "board/README.md": {
+      "kind": "file",
+      "source": "board",
+      "to": "board/",
+      "file": "README.md",
+      "since": "4a1795bfd66eec5a4f67edb331e7f9e90af5a6b4",
+      "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
+      "review": "git -C \"board\" diff 4a1795b fa4b214 -- \"README.md\""
+    },
+    "board/board-page.html": {
+      "kind": "file",
+      "source": "board",
+      "to": "board/",
+      "file": "board-page.html",
+      "since": "c9549ffd8e0c5237a0dc695811f29787bfeb3f66",
+      "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
+      "review": "git -C \"board\" diff c9549ff fa4b214 -- \"board-page.html\""
+    },
+    "board/lib/lease.mjs": {
+      "kind": "file",
+      "source": "board",
+      "to": "board/",
+      "file": "lib/lease.mjs",
+      "since": "4a1795bfd66eec5a4f67edb331e7f9e90af5a6b4",
+      "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
+      "review": "git -C \"board\" diff 4a1795b fa4b214 -- \"lib/lease.mjs\""
     },
     "board/lib/premise.mjs": {
       "kind": "file",
@@ -174,7 +201,7 @@
       "file": "lib/premise.mjs",
       "since": "4a1795bfd66eec5a4f67edb331e7f9e90af5a6b4",
       "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
-      "review": "git -C \"board\" diff 4a1795b 60c2bdf -- \"lib/premise.mjs\""
+      "review": "git -C \"board\" diff 4a1795b fa4b214 -- \"lib/premise.mjs\""
     },
     "board/tests/leases-premise.test.mjs": {
       "kind": "file",
@@ -183,7 +210,7 @@
       "file": "tests/leases-premise.test.mjs",
       "since": "4a1795bfd66eec5a4f67edb331e7f9e90af5a6b4",
       "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
-      "review": "git -C \"board\" diff 4a1795b 60c2bdf -- \"tests/leases-premise.test.mjs\""
+      "review": "git -C \"board\" diff 4a1795b fa4b214 -- \"tests/leases-premise.test.mjs\""
     },
     "board/lib/knowledge.mjs": {
       "kind": "file",
@@ -192,7 +219,7 @@
       "file": "lib/knowledge.mjs",
       "since": "c9549ffd8e0c5237a0dc695811f29787bfeb3f66",
       "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
-      "review": "git -C \"board\" diff c9549ff 60c2bdf -- \"lib/knowledge.mjs\""
+      "review": "git -C \"board\" diff c9549ff fa4b214 -- \"lib/knowledge.mjs\""
     },
     "board/lib/maintainer.mjs": {
       "kind": "file",
@@ -201,7 +228,7 @@
       "file": "lib/maintainer.mjs",
       "since": "c9549ffd8e0c5237a0dc695811f29787bfeb3f66",
       "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
-      "review": "git -C \"board\" diff c9549ff 60c2bdf -- \"lib/maintainer.mjs\""
+      "review": "git -C \"board\" diff c9549ff fa4b214 -- \"lib/maintainer.mjs\""
     },
     "board/lib/rules.mjs": {
       "kind": "file",
@@ -210,7 +237,7 @@
       "file": "lib/rules.mjs",
       "since": "c9549ffd8e0c5237a0dc695811f29787bfeb3f66",
       "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
-      "review": "git -C \"board\" diff c9549ff 60c2bdf -- \"lib/rules.mjs\""
+      "review": "git -C \"board\" diff c9549ff fa4b214 -- \"lib/rules.mjs\""
     },
     "board/tests/backlog.test.mjs": {
       "kind": "file",
@@ -219,7 +246,7 @@
       "file": "tests/backlog.test.mjs",
       "since": "c9549ffd8e0c5237a0dc695811f29787bfeb3f66",
       "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
-      "review": "git -C \"board\" diff c9549ff 60c2bdf -- \"tests/backlog.test.mjs\""
+      "review": "git -C \"board\" diff c9549ff fa4b214 -- \"tests/backlog.test.mjs\""
     },
     "board/tests/coordination.test.mjs": {
       "kind": "file",
@@ -228,7 +255,7 @@
       "file": "tests/coordination.test.mjs",
       "since": "c9549ffd8e0c5237a0dc695811f29787bfeb3f66",
       "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
-      "review": "git -C \"board\" diff c9549ff 60c2bdf -- \"tests/coordination.test.mjs\""
+      "review": "git -C \"board\" diff c9549ff fa4b214 -- \"tests/coordination.test.mjs\""
     },
     "board/tests/maintainer-sweep.test.mjs": {
       "kind": "file",
@@ -237,7 +264,7 @@
       "file": "tests/maintainer-sweep.test.mjs",
       "since": "c9549ffd8e0c5237a0dc695811f29787bfeb3f66",
       "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
-      "review": "git -C \"board\" diff c9549ff 60c2bdf -- \"tests/maintainer-sweep.test.mjs\""
+      "review": "git -C \"board\" diff c9549ff fa4b214 -- \"tests/maintainer-sweep.test.mjs\""
     },
     "board/tests/stale-ledgers.test.mjs": {
       "kind": "file",
@@ -246,7 +273,7 @@
       "file": "tests/stale-ledgers.test.mjs",
       "since": "c9549ffd8e0c5237a0dc695811f29787bfeb3f66",
       "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
-      "review": "git -C \"board\" diff c9549ff 60c2bdf -- \"tests/stale-ledgers.test.mjs\""
+      "review": "git -C \"board\" diff c9549ff fa4b214 -- \"tests/stale-ledgers.test.mjs\""
     },
     "board/tests/wait-states.test.mjs": {
       "kind": "file",
@@ -255,7 +282,7 @@
       "file": "tests/wait-states.test.mjs",
       "since": "c9549ffd8e0c5237a0dc695811f29787bfeb3f66",
       "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
-      "review": "git -C \"board\" diff c9549ff 60c2bdf -- \"tests/wait-states.test.mjs\""
+      "review": "git -C \"board\" diff c9549ff fa4b214 -- \"tests/wait-states.test.mjs\""
     },
     "board/tests/workflow-cache.test.mjs": {
       "kind": "file",
@@ -264,79 +291,79 @@
       "file": "tests/workflow-cache.test.mjs",
       "since": "c9549ffd8e0c5237a0dc695811f29787bfeb3f66",
       "why": "waits for the held board.mjs, issue.mjs, audit.mjs, ... (code publishes together)",
-      "review": "git -C \"board\" diff c9549ff 60c2bdf -- \"tests/workflow-cache.test.mjs\""
+      "review": "git -C \"board\" diff c9549ff fa4b214 -- \"tests/workflow-cache.test.mjs\""
     },
     "lesson:78fbbace857a": {
       "kind": "lesson",
       "why": "lesson not marked proven (LEAD/STRONG/untested/not yet/probably...)",
       "label": "2026-10-31 [sakura] (touch, export, artemis, ios) line 348 lesson:78fbbace857a",
-      "review": "knowledge/LESSONS.md line 348 at root 74f0613"
+      "review": "knowledge/LESSONS.md line 348 at root 6a11878"
     },
     "lesson:79cac765c8d4": {
       "kind": "lesson",
       "why": "lesson contains a local drive path",
       "label": "2026-11-08 [mahoyo] (playwright, node, checker) line 399 lesson:79cac765c8d4",
-      "review": "knowledge/LESSONS.md line 399 at root 74f0613"
+      "review": "knowledge/LESSONS.md line 399 at root 6a11878"
     },
     "lesson:7c7ebcaf4732": {
       "kind": "lesson",
       "why": "lesson contains a local drive path",
       "label": "2026-11-08 [mahoyo] (input, engine, browser) line 400 lesson:7c7ebcaf4732",
-      "review": "knowledge/LESSONS.md line 400 at root 74f0613"
+      "review": "knowledge/LESSONS.md line 400 at root 6a11878"
     },
     "lesson:7429be6f1cec": {
       "kind": "lesson",
       "why": "lesson contains a local drive path",
       "label": "2026-11-09 [mahoyo] (media, audio, startup, browser) line 401 lesson:7429be6f1cec",
-      "review": "knowledge/LESSONS.md line 401 at root 74f0613"
+      "review": "knowledge/LESSONS.md line 401 at root 6a11878"
     },
     "lesson:209f87ac3cec": {
       "kind": "lesson",
       "why": "lesson contains a local drive path",
       "label": "2026-11-09 [mahoyo] (build, evidence, seams) line 402 lesson:209f87ac3cec",
-      "review": "knowledge/LESSONS.md line 402 at root 74f0613"
+      "review": "knowledge/LESSONS.md line 402 at root 6a11878"
     },
     "lesson:7c08bdf56eec": {
       "kind": "lesson",
       "why": "lesson contains a local drive path",
       "label": "2026-11-09 [mahoyo] (writes, recovery, disk) line 403 lesson:7c08bdf56eec",
-      "review": "knowledge/LESSONS.md line 403 at root 74f0613"
+      "review": "knowledge/LESSONS.md line 403 at root 6a11878"
     },
     "lesson:0477b779623e": {
       "kind": "lesson",
       "why": "lesson not marked proven (LEAD/STRONG/untested/not yet/probably...)",
       "label": "2026-11-09 [mahoyo] (packaging, assets, quality, verification) line 406 lesson:0477b779623e",
-      "review": "knowledge/LESSONS.md line 406 at root 74f0613"
+      "review": "knowledge/LESSONS.md line 406 at root 6a11878"
     },
     "lesson:0e54aa39b993": {
       "kind": "lesson",
       "why": "lesson contains a local drive path",
       "label": "2026-11-09 [mahoyo] (asset-fetch, service-worker, engine-cache) line 410 lesson:0e54aa39b993",
-      "review": "knowledge/LESSONS.md line 410 at root 74f0613"
+      "review": "knowledge/LESSONS.md line 410 at root 6a11878"
     },
     "lesson:215774b39016": {
       "kind": "lesson",
       "why": "lesson contains a local drive path",
       "label": "2026-11-09 [subahibi] (wasm, deploy, cache, proof) line 414 lesson:215774b39016",
-      "review": "knowledge/LESSONS.md line 414 at root 74f0613"
+      "review": "knowledge/LESSONS.md line 414 at root 6a11878"
     },
     "lesson:89e55082d0f3": {
       "kind": "lesson",
       "why": "lesson contains a local drive path",
       "label": "2026-11-09 [mahoyo] (audio, fidelity, pc-compare) line 415 lesson:89e55082d0f3",
-      "review": "knowledge/LESSONS.md line 415 at root 74f0613"
+      "review": "knowledge/LESSONS.md line 415 at root 6a11878"
     },
     "lesson:28179e4ccecb": {
       "kind": "lesson",
       "why": "lesson contains a local drive path",
       "label": "2026-11-10 [mahoyo] (memory, playwright, measurement) line 417 lesson:28179e4ccecb",
-      "review": "knowledge/LESSONS.md line 417 at root 74f0613"
+      "review": "knowledge/LESSONS.md line 417 at root 6a11878"
     },
     "lesson:299ffa405c96": {
       "kind": "lesson",
       "why": "lesson contains a local drive path",
       "label": "2026-11-23 [mahoyo] (re, census, knife, motion) line 440 lesson:299ffa405c96",
-      "review": "knowledge/LESSONS.md line 440 at root 74f0613"
+      "review": "knowledge/LESSONS.md line 440 at root 6a11878"
     }
   }
 }
