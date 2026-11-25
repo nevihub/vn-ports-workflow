@@ -16,8 +16,7 @@ had 8,082 requests / 49 sessions, 118K average, p50 119K, p90 183K, 44.3% above 
 48 fresh sessions started at 15K average. Re-run both commands after a week to compare the same rolling window.
 
 Use smaller auto-compact windows (Claude Opus 200K, Haiku 150K; Codex 200K) and moderate default effort for routine
-work (Haiku medium, Codex high). OpenCode `compaction.buffer` is context left free, not the trigger threshold: the
-existing numeric `800000` means an approximately 200-249K trigger for its 1M-context models. Keep specialized MCP
+work (Haiku medium, Codex high). Keep specialized MCP
 tools out of the default agent and enable them only in dedicated agents. After a ticket is finished and HANDOFF is
 updated, stop when context exceeds ~150K; start a fresh session with HANDOFF and `issue next`. Estimated Claude
 token reduction from shorter sessions is 40-50%; this is an estimate, not a measured outcome.
