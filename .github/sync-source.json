@@ -1,7 +1,7 @@
 {
   "note": "Last local VN-Ports commits synced here by scripts/public-sync.mjs",
   "sources": {
-    "root": "3a8049ce0ff2f7bb08d9bdae88e1782253b07220",
+    "root": "04056668a5c4122b8780ace5fc70a862dc05ce00",
     "board": "b781fa1766af23a7d78b0c0ee1897d78a8cc4c0f"
   },
   "held": {
@@ -57,7 +57,7 @@
       "file": "knowledge/NEW-PC-SETUP.md",
       "since": "e142a4bfa1d53db97488f2ec1189c79c2b7df1ff",
       "why": "the public copy is missing (removed there or never synced)",
-      "review": "git -C \".\" diff e142a4b 3a8049c -- \"knowledge/NEW-PC-SETUP.md\""
+      "review": "git -C \".\" diff e142a4b 0405666 -- \"knowledge/NEW-PC-SETUP.md\""
     },
     "knowledge/WORKFLOW-NOTES.md": {
       "kind": "file",
@@ -66,7 +66,7 @@
       "file": "knowledge/WORKFLOW-NOTES.md",
       "since": "3a4a99816972c4d9f6a56302bc8e991f68c6086d",
       "why": "new local file; add it by hand if it is reusable",
-      "review": "git -C \".\" diff 3a4a998 3a8049c -- \"knowledge/WORKFLOW-NOTES.md\""
+      "review": "git -C \".\" diff 3a4a998 0405666 -- \"knowledge/WORKFLOW-NOTES.md\""
     },
     "knowledge/DEFAULTS.md": {
       "kind": "file",
@@ -75,7 +75,7 @@
       "file": "knowledge/DEFAULTS.md",
       "since": "3a4a99816972c4d9f6a56302bc8e991f68c6086d",
       "why": "conflicts with public-only edits; merge by hand",
-      "review": "git -C \".\" diff 3a4a998 3a8049c -- \"knowledge/DEFAULTS.md\""
+      "review": "git -C \".\" diff 3a4a998 0405666 -- \"knowledge/DEFAULTS.md\""
     },
     "knowledge/TEMPLATES.md": {
       "kind": "file",
@@ -84,7 +84,7 @@
       "file": "knowledge/TEMPLATES.md",
       "since": "3a4a99816972c4d9f6a56302bc8e991f68c6086d",
       "why": "conflicts with public-only edits; merge by hand",
-      "review": "git -C \".\" diff 3a4a998 3a8049c -- \"knowledge/TEMPLATES.md\""
+      "review": "git -C \".\" diff 3a4a998 0405666 -- \"knowledge/TEMPLATES.md\""
     },
     "knowledge/README.md": {
       "kind": "file",
@@ -93,7 +93,7 @@
       "file": "knowledge/README.md",
       "since": "81795439bba3762dfa0f0d5af2fe826a942b7325",
       "why": "new text contains a local drive path",
-      "review": "git -C \".\" diff 8179543 3a8049c -- \"knowledge/README.md\""
+      "review": "git -C \".\" diff 8179543 0405666 -- \"knowledge/README.md\""
     },
     "board/README.md": {
       "kind": "file",
@@ -315,73 +315,79 @@
       "kind": "lesson",
       "why": "lesson not marked proven (LEAD/STRONG/untested/not yet/probably...)",
       "label": "2026-10-31 [sakura] (touch, export, artemis, ios) line 348 lesson:78fbbace857a",
-      "review": "knowledge/LESSONS.md line 348 at root 3a8049c"
+      "review": "knowledge/LESSONS.md line 348 at root 0405666"
     },
     "lesson:79cac765c8d4": {
       "kind": "lesson",
       "why": "lesson contains a local drive path",
       "label": "2026-11-08 [mahoyo] (playwright, node, checker) line 399 lesson:79cac765c8d4",
-      "review": "knowledge/LESSONS.md line 399 at root 3a8049c"
+      "review": "knowledge/LESSONS.md line 399 at root 0405666"
     },
     "lesson:7c7ebcaf4732": {
       "kind": "lesson",
       "why": "lesson contains a local drive path",
       "label": "2026-11-08 [mahoyo] (input, engine, browser) line 400 lesson:7c7ebcaf4732",
-      "review": "knowledge/LESSONS.md line 400 at root 3a8049c"
+      "review": "knowledge/LESSONS.md line 400 at root 0405666"
     },
     "lesson:7429be6f1cec": {
       "kind": "lesson",
       "why": "lesson contains a local drive path",
       "label": "2026-11-09 [mahoyo] (media, audio, startup, browser) line 401 lesson:7429be6f1cec",
-      "review": "knowledge/LESSONS.md line 401 at root 3a8049c"
+      "review": "knowledge/LESSONS.md line 401 at root 0405666"
     },
     "lesson:209f87ac3cec": {
       "kind": "lesson",
       "why": "lesson contains a local drive path",
       "label": "2026-11-09 [mahoyo] (build, evidence, seams) line 402 lesson:209f87ac3cec",
-      "review": "knowledge/LESSONS.md line 402 at root 3a8049c"
+      "review": "knowledge/LESSONS.md line 402 at root 0405666"
     },
     "lesson:7c08bdf56eec": {
       "kind": "lesson",
       "why": "lesson contains a local drive path",
       "label": "2026-11-09 [mahoyo] (writes, recovery, disk) line 403 lesson:7c08bdf56eec",
-      "review": "knowledge/LESSONS.md line 403 at root 3a8049c"
+      "review": "knowledge/LESSONS.md line 403 at root 0405666"
     },
     "lesson:0477b779623e": {
       "kind": "lesson",
       "why": "lesson not marked proven (LEAD/STRONG/untested/not yet/probably...)",
       "label": "2026-11-09 [mahoyo] (packaging, assets, quality, verification) line 406 lesson:0477b779623e",
-      "review": "knowledge/LESSONS.md line 406 at root 3a8049c"
+      "review": "knowledge/LESSONS.md line 406 at root 0405666"
     },
     "lesson:0e54aa39b993": {
       "kind": "lesson",
       "why": "lesson contains a local drive path",
       "label": "2026-11-09 [mahoyo] (asset-fetch, service-worker, engine-cache) line 410 lesson:0e54aa39b993",
-      "review": "knowledge/LESSONS.md line 410 at root 3a8049c"
+      "review": "knowledge/LESSONS.md line 410 at root 0405666"
     },
     "lesson:215774b39016": {
       "kind": "lesson",
       "why": "lesson contains a local drive path",
       "label": "2026-11-09 [subahibi] (wasm, deploy, cache, proof) line 414 lesson:215774b39016",
-      "review": "knowledge/LESSONS.md line 414 at root 3a8049c"
+      "review": "knowledge/LESSONS.md line 414 at root 0405666"
     },
     "lesson:89e55082d0f3": {
       "kind": "lesson",
       "why": "lesson contains a local drive path",
       "label": "2026-11-09 [mahoyo] (audio, fidelity, pc-compare) line 415 lesson:89e55082d0f3",
-      "review": "knowledge/LESSONS.md line 415 at root 3a8049c"
+      "review": "knowledge/LESSONS.md line 415 at root 0405666"
     },
     "lesson:28179e4ccecb": {
       "kind": "lesson",
       "why": "lesson contains a local drive path",
       "label": "2026-11-10 [mahoyo] (memory, playwright, measurement) line 417 lesson:28179e4ccecb",
-      "review": "knowledge/LESSONS.md line 417 at root 3a8049c"
+      "review": "knowledge/LESSONS.md line 417 at root 0405666"
     },
     "lesson:299ffa405c96": {
       "kind": "lesson",
       "why": "lesson contains a local drive path",
       "label": "2026-11-23 [mahoyo] (re, census, knife, motion) line 440 lesson:299ffa405c96",
-      "review": "knowledge/LESSONS.md line 440 at root 3a8049c"
+      "review": "knowledge/LESSONS.md line 440 at root 0405666"
+    },
+    "lesson:f06115511e39": {
+      "kind": "lesson",
+      "why": "lesson not marked proven (LEAD/STRONG/untested/not yet/probably...)",
+      "label": "2026-11-26 [mahoyo] (webkit, ios, movie, video) line 451 lesson:f06115511e39",
+      "review": "knowledge/LESSONS.md line 451 at root 0405666"
     }
   }
 }
