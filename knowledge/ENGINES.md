@@ -33,7 +33,8 @@ the same headings and fill it as research lands. Never quote game text here.
   shingles) and self-test on a planted fixture before the first commit (Saya `check-firewall.mjs`, Subahibi
   `scripts/check-firewall.mjs`). Sakura relies on ignored V: folders and has no shingle firewall yet.
 - **Headless first:** every port got to "boots headless with a census of unknown opcodes/built-ins" before any
-  browser work; Sakura's runs are headless only (never open a game window on the user's PC).
+  browser work; candidate runs default to headless, and each locked check keeps its own launch settings (some run a
+  headed browser). Running the original game on screen for reference frames follows the root `AGENTS.md` rule.
 - **GPL runtimes:** publishing a WASM build derived from a GPL runtime means publishing its source (approved for
   Subahibi's OpenBGI route; ask before the first public Sakura build).
 
